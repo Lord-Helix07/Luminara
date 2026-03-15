@@ -2,7 +2,10 @@ import textstat
 import spacy
 import fitz 
 import sys
+import pytesseract
 from pptx import Presentation
+from docx import Document
+from PIL import Image
 
 
 nlp = spacy.load('en_core_web_md')
@@ -37,6 +40,26 @@ def read_pptx(path):
     except Exception as e:
         print("Error opening or reading pptx: " + str(e))
         return None
+    
+def read_docx(path):
+    try: 
+        doc = Document(path)
+        text = []
+
+        for para in doc.paragraphs:
+            text.append(para.text.strip())
+
+        return "\n".join(text)
+
+    except Exception as e:
+        print("Error opening or reading docx: " + str(e))
+        return None
+
+def read_ocr(path):
+    img = Image.open(path)
+    text = pytesseract.image_to_string(img)
+
+    return text
 
 
 if __name__ == "__main__":
@@ -48,5 +71,9 @@ if __name__ == "__main__":
         print(read_pdf(path))
     elif(path.endswith(".pptx")):
         print(read_pptx(path))
+    elif(path.endswith(".docx")):
+        print(read_docx(path))
+    elif(path.endswith(".png") or path.endswith(".jpg") or path.endswith(".jpeg")):
+        print(read_ocr(path))
     else:
         print("Unknown file type")
