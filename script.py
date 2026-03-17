@@ -1,14 +1,9 @@
-import textstat
-import spacy
 import fitz 
 import sys
 import pytesseract
 from pptx import Presentation
 from docx import Document
 from PIL import Image
-
-
-nlp = spacy.load('en_core_web_md')
 
 def read_pdf(path):
 
