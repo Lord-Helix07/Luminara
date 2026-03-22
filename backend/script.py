@@ -17,8 +17,25 @@ def read_pdf(path):
     try:
         with fitz.open(path) as pdf:
             for page in pdf:
-                full_text += page.get_text().strip()
+                text = page.get_text().strip()
+                images = page.get_images()
+
+                if len(text) >= 2:
+                    full_text+=text
+
+                elif len(images) > 0:
+                    for img in images:
+
+                        # The image id
+                        xref = img[0]
+                        img_content = pdf.extract_image(xref)
+
+                        img_bytes = img_content["image"]
+
+                        full_text+=read_ocr_bytes(img_bytes)
+            
         return full_text
+
     
     except Exception as e:
         print("Error opening or reading pdf: " + str(e))
