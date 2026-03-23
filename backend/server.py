@@ -6,27 +6,37 @@ import tempfile, os
 app = Flask(__name__)
 CORS(app)
 
-@app.route("/upload", methods=["POST"])
-def upload():
-    file = request.files["file"]
-    suffix = os.path.splitext(file.filename)[1]
+# Method returns HTTP Response object (containing JSON data)
+@app.route("/convert", methods=["POST"])
+def convert():
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+    # get() is safer can return None
+    file = request.files.get("file")
+
+    if not file:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file_extension = os.path.splitext(file.filename)[1]
+
+    # Creates a temp file to write the uploaded file into it
+    with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as tmp:
         file.save(tmp.name)
         path = tmp.name
 
-    if suffix == ".pdf":
+    if file_extension == ".pdf":
         text = read_pdf(path)
-    elif suffix == ".pptx":
+    elif file_extension == ".pptx":
         text = read_pptx(path)
-    elif suffix == ".docx":
+    elif file_extension == ".docx":
         text = read_docx(path)
-    elif suffix in [".png", ".jpg", ".jpeg"]:
+    elif file_extension in [".png", ".jpg", ".jpeg"]:
         text = read_ocr_path(path)
     else:
         text = "Unsupported file type"
 
-    os.unlink(path)
+    # Deletes temp file after processing
+    os.remove(path)
+
     return jsonify({"text": text})
 
 if __name__ == "__main__":
