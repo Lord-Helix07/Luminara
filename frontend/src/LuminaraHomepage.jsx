@@ -349,7 +349,7 @@ export default function LuminaraHome() {
 
             {/* Convert */}
             <button
-              onClick={() => navigate('/result')}
+              onClick={handleConvert}
               onMouseEnter={(e) => e.target.style.background = "#5a7a5a"}
               onMouseLeave={(e) => e.target.style.background = "#6b8f6b"}
               style={{
