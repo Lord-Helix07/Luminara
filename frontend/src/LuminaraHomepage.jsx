@@ -37,6 +37,7 @@ export default function LuminaraHome() {
   const [dragOver, setDragOver] = useState(false);
   const [file, setFile] = useState(null);
   const fileInputRef = useRef();
+  const [error, setError] = useState("");   // Error msg (init empty)
 
   const handleDrop = (e) => {
     e.preventDefault();
@@ -51,6 +52,41 @@ export default function LuminaraHome() {
     setSpeed(1.0); setVoice("female-natural"); setFile(null);
     setStartPage(""); setEndPage("");
   };
+
+  const handleConvert = async () => {
+
+    if(!file){
+      setError("No file selected");
+      return;
+    }
+    setError("");   // Clear old error
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try{ 
+      const response = await fetch("http://localhost:5000/convert", {
+      method: "POST",
+      body: formData
+      });
+
+      const data = await response.json();
+
+      if(!response.ok){
+        setError(data.error || "Failed to convert");  // Use backend error or fallback msg
+        return;
+      }
+
+      navigate("/result", {
+        state: { text: data.text }
+      });
+    }
+    catch(e){
+      console.error(e);
+      setError("Problem connecting to server");
+    }
+
+  }
 
   return (
     <>

@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 export default function LuminaraResult() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const text = location.state?.text || "No text available";
   const [isPlaying, setIsPlaying] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toast, setToast] = useState("");
@@ -75,14 +78,10 @@ export default function LuminaraResult() {
         {/* MAIN CONTENT */}
         <main style={{ flex: 1, padding: "32px 28px" }}>
           <div style={{ background: "white", borderRadius: "12px", padding: "40px 48px", maxWidth: "860px", margin: "0 auto", boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
-            <div style={{ fontSize: "22px", fontWeight: "600", marginBottom: "6px" }}>Sample PDF</div>
-            <div style={{ fontSize: "14px", color: "#6B6860", marginBottom: "28px" }}>This is a simple PDF file. Fun fun fun.</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "16px", fontSize: "15px", lineHeight: "1.8", color: "#1C1C1C" }}>
-              <p>Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Phasellus facilisis odio sed mi. Curabitur suscipit. Nullam vel nisl. Etiam semper ipsum ut lectus.</p>
-              <p>Integer a erat. Cras laoreet ligula cursus enim. Aenean scelerisque velit et tellus. Vestibulum dictum aliquet sem. Nulla facilisi.</p>
-              <p>Vivamus sollicitudin, metus ut interdum eleifend, nisi tellus pellentesque elit, tristique accumsan eros quam et risus.</p>
-              <p>Pellentesque sit amet lectus. Praesent pulvinar, nunc quis iaculis sagittis, justo quam lobortis tortor, sed vestibulum dui metus venenatis est.</p>
-              <p>In mauris. Pellentesque dui nisi, iaculis eu, rhoncus in, venenatis ac, ante. Ut odio justo, scelerisque vel, facilisis non, commodo a, pede.</p>
+            <div style={{ fontSize: "22px", fontWeight: "600", marginBottom: "6px" }}>Converted Text</div>
+            <div style={{ fontSize: "14px", color: "#6B6860", marginBottom: "28px" }}>Here is your extracted content</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px", fontSize: "15px", lineHeight: "1.8", color: "#1C1C1C", whiteSpace: "pre-wrap"}}>
+              {text}
             </div>
           </div>
         </main>
