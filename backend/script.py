@@ -17,25 +17,8 @@ def read_pdf(path):
     try:
         with fitz.open(path) as pdf:
             for page in pdf:
-                text = page.get_text().strip()
-                images = page.get_images()
-
-                if len(text) >= 2:
-                    full_text+=text
-
-                elif len(images) > 0:
-                    for img in images:
-
-                        # The image id
-                        xref = img[0]
-                        img_content = pdf.extract_image(xref)
-
-                        img_bytes = img_content["image"]
-
-                        full_text+=read_ocr_bytes(img_bytes)
-            
+                full_text += page.get_text().strip()
         return full_text
-
     
     except Exception as e:
         print("Error opening or reading pdf: " + str(e))
@@ -76,6 +59,13 @@ def read_docx(path):
 
         for para in doc.paragraphs:
             text.append(para.text.strip())
+
+        for rel in doc.part.rels.values():
+            if "image" in rel.reltype:
+                img_bytes = rel.target_part.blob
+                img_text = read_ocr_bytes(img_bytes)
+                if img_text:
+                    text.append(img_text.strip())
 
         return "\n".join(text)
 
