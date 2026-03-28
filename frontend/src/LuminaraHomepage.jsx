@@ -65,7 +65,7 @@ export default function LuminaraHome() {
     formData.append("file", file);
 
     try{ 
-      const response = await fetch("http://localhost:5000/convert", {
+      const response = await fetch("http://localhost:5050/convert", {
       method: "POST",
       body: formData
       });
