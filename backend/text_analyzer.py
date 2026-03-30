@@ -52,6 +52,32 @@ def flagCheck(text):
         except Exception:
             flags.append("Readability score could not be calculated for a sentence.")
 
+    #checking for long words (avg syllables per word)
+    for sentence in doc.sents:
+        sentence_text = sentence.text.strip()
+        if not sentence_text:
+            continue
+        words = sentence_text.split()
+        if not words:
+            continue
+        long_words = [w for w in words if len(w) >= 10]
+        if len(long_words) >= 2:
+            flags.append(f"Long words detected {long_words[:3]}: {sentence_text}")
+            triggered_text.append(sentence_text)
+
+    #checking for long words (avg syllables per word)
+    for sentence in doc.sents:
+        sentence_text = sentence.text.strip()
+        if not sentence_text:
+            continue
+        words = sentence_text.split()
+        if not words:
+            continue
+        long_words = [w for w in words if len(w) >= 10]
+        if len(long_words) >= 2:
+            flags.append(f"Long words detected {long_words[:3]}: {sentence_text}")
+            triggered_text.append(sentence_text)
+
     #checking for dense paras
     paragraphs = text.split("\n")
     for para in paragraphs:
