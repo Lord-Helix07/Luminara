@@ -7,14 +7,32 @@ warnings.filterwarnings(
     category=Warning,
     module="urllib3",
 )
+
 #nlp imports
 import spacy
 import textstat
+from wordfreq import zipf_frequency
+
+# Constant
+WORD_RARITY_THRESHOLD = 3
 
 #just reading the file
 def process_file(path):
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
+
+def word_difficulty(word):
+    score = 0
+
+    # Rare word
+    if zipf_frequency(word, "en") < WORD_RARITY_THRESHOLD:
+        score += 2
+
+    # Long word
+    if textstat.syllable_count(word) >= 3:
+        score += 0.25
+
+    return score
 
 #logic for storing + finding flags (Vishalkiran)
 def flagCheck(text):
@@ -27,11 +45,41 @@ def flagCheck(text):
     except Exception:
         flags.append("NLP model could not be loaded.")
         return flags, triggered_text
-    #checking for long sentences
+    
+    # Checks for long and 
+    # Short sentences (Ryan)
     for sentence in doc.sents:
-        word_count = len(sentence.text.split())
+        sentence_text = sentence.text.strip()
+
+        #words = sentence_text.split()
+        words = [token.text.lower() for token in sentence if token.is_alpha]
+
+        word_count = len(words)
+        
+        rare_word_count = sum(1 for word in words if zipf_frequency(word, "en") < WORD_RARITY_THRESHOLD)
+
+        sentence_difficulty = sum(word_difficulty(word) for word in words)
+
+        if word_count < 8:
+
+            #---- UNDERFLAGGING TRUE POSITIVES ----
+            difficulty_per_word = sentence_difficulty / word_count
+
+            if difficulty_per_word >= 0.65 or rare_word_count >= 2:
+                flags.append(f"Short complex sentence detected (difficulty {sentence_difficulty}): {sentence_text}")
+            
+            #---- OVERFLAGGING FALSE POSITIVES ----
+            #long_word_count = sum(
+            #    1 for word in words
+            #    if textstat.syllable_count(word) >= 3
+            #)
+
+            #if rare_word_count >= 2 or (rare_word_count >= 1 and long_word_count >= 2):
+            #    flags.append(
+            #        f"Complex short sentence detected: {sentence_text}"
+            #    )
+
         if word_count > 25:
-            sentence_text = sentence.text.strip()
             flags.append(
                 f"Long sentence detected ({word_count} words): {sentence_text}"
             )
@@ -45,9 +93,9 @@ def flagCheck(text):
         try:
             readability = textstat.flesch_kincaid_grade(sentence_text)
             if readability > 10:
-                flags.append(
-                    f"High complexity sentence (grade {readability:.2f}): {sentence_text}"
-                )
+                #flags.append(
+                #    f"High complexity sentence (grade {readability:.2f}): {sentence_text}"
+                #)
                 triggered_text.append(sentence_text)
         except Exception:
             flags.append("Readability score could not be calculated for a sentence.")
