@@ -13,8 +13,9 @@ import spacy
 import textstat
 from wordfreq import zipf_frequency
 
-# Constant
+# Constants
 WORD_RARITY_THRESHOLD = 3
+KINCAID_THRESHOLD = 10
 
 #just reading the file
 def process_file(path):
@@ -36,6 +37,7 @@ def word_difficulty(word):
 
 #logic for storing + finding flags (Vishalkiran)
 def flagCheck(text):
+
     flags = []
     triggered_text = []
 
@@ -46,10 +48,12 @@ def flagCheck(text):
         flags.append("NLP model could not be loaded.")
         return flags, triggered_text
     
-    # Checks for long and 
-    # Short sentences (Ryan)
+    # Checks by short, long, and medium length sentences (Ryan)
     for sentence in doc.sents:
+        
         sentence_text = sentence.text.strip()
+        if not sentence_text:
+            continue
 
         #words = sentence_text.split()
         words = [token.text.lower() for token in sentence if token.is_alpha]
@@ -60,46 +64,53 @@ def flagCheck(text):
 
         sentence_difficulty = sum(word_difficulty(word) for word in words)
 
-        if word_count < 8:
+        difficulty_per_word = sentence_difficulty / word_count
 
-            #---- UNDERFLAGGING TRUE POSITIVES ----
-            difficulty_per_word = sentence_difficulty / word_count
+        #----SHORT SENTENCES----
+        if word_count < 9:
+
+            #----UNDERFLAGS TRUE POSITIVES----
 
             if difficulty_per_word >= 0.65 or rare_word_count >= 2:
-                flags.append(f"Short complex sentence detected (difficulty {sentence_difficulty}): {sentence_text}")
+                flags.append(f"High complexity short sentence (word difficulty score {sentence_difficulty}): {sentence_text}")
+                triggered_text.append(sentence_text)
             
-            #---- OVERFLAGGING FALSE POSITIVES ----
-            #long_word_count = sum(
-            #    1 for word in words
-            #    if textstat.syllable_count(word) >= 3
-            #)
 
+            #----OVERFLAGS FALSE POSITIVES----
+            #long_word_count = sum(1 for word in words if textstat.syllable_count(word) >= 3)
             #if rare_word_count >= 2 or (rare_word_count >= 1 and long_word_count >= 2):
-            #    flags.append(
-            #        f"Complex short sentence detected: {sentence_text}"
-            #    )
+            #    flags.append(f"Complex short sentence detected: {sentence_text}")
 
-        if word_count > 25:
-            flags.append(
-                f"Long sentence detected ({word_count} words): {sentence_text}"
-            )
+        #----MEDIUM SENTENCES----
+        elif word_count < 20:
+            try:
+                kincaid_readability = textstat.flesch_kincaid_grade(sentence_text)
+                if kincaid_readability > KINCAID_THRESHOLD + 3:
+                    flags.append(
+                        f"High complexity sentence (Kincaid level {kincaid_readability:.2f}): {sentence_text}"
+                    )
+                    triggered_text.append(sentence_text)
+
+            except Exception:
+                flags.append("Readability score could not be calculated for a sentence.")
+
+        #----LONG SENTENCES----
+        else:
+
+            flags.append(f"Long sentence detected ({word_count} words): {sentence_text}")
             triggered_text.append(sentence_text)
 
+            #if difficulty_per_word >= 0.1:
 
-    #checking kincaid grade for each specific sentence itself
-    for sentence in doc.sents:
-        sentence_text = sentence.text.strip()
-        if not sentence_text:
-            continue
-        try:
-            readability = textstat.flesch_kincaid_grade(sentence_text)
-            if readability > 10:
-                #flags.append(
-                #    f"High complexity sentence (grade {readability:.2f}): {sentence_text}"
-                #)
-                triggered_text.append(sentence_text)
-        except Exception:
-            flags.append("Readability score could not be calculated for a sentence.")
+            try:
+                kincaid_readability = textstat.flesch_kincaid_grade(sentence_text)
+                if kincaid_readability > KINCAID_THRESHOLD + 6:
+                    flags.append(f"High complexity long sentence (Kincaid level {kincaid_readability:.2f}): {sentence_text}")
+                    triggered_text.append(sentence_text)
+
+            except Exception:
+                flags.append("Readability score could not be calculated for a sentence.")
+
 
     #checking for long words (avg syllables per word)
     for sentence in doc.sents:
@@ -113,6 +124,8 @@ def flagCheck(text):
         if len(long_words) >= 2:
             flags.append(f"Long words detected {long_words[:3]}: {sentence_text}")
             triggered_text.append(sentence_text)
+            
+
 
     #checking for dense paras
     paragraphs = text.split("\n")
