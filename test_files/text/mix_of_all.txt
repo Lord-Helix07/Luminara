@@ -1,0 +1,68 @@
+NLP Flag Checker — Test Document
+This document is designed to exercise every detection branch of the flag checker. Each section is labeled with the case it targets and the expected flag output.
+
+Section 1: Short Sentences
+
+Read carefully.
+
+Quantitative epizootiological methodologies predominate.
+
+Cats sleep.
+
+Pharmacokinetic contraindications necessitate individualized dosimetry.
+
+Use it wisely.
+
+Idiosyncratic immunosuppression exacerbates multisystemic pathophysiology.
+
+Section 2: Medium Sentences (Kincaid Check)
+
+The patient demonstrated marked improvement following the administration of the prescribed therapeutic regimen.
+
+Children learn best when they feel safe, supported, and encouraged by the adults around them.
+
+The iterative recalibration of macroeconomic equilibrium necessitates concomitant regulatory restructuring across jurisdictional boundaries.
+
+She walked to the store and bought bread, milk, and a dozen eggs for the morning.
+
+Postoperative hemodynamic stabilization requires vigilant perioperative cardiovascular monitoring and pharmacological intervention protocols.
+
+The committee reviewed all submitted proposals before voting on the final budget allocation for next year.
+
+Section 3: Long Sentences
+
+The sun rose slowly over the mountains, casting long golden shadows across the valley floor, and the birds began to sing their morning songs as the world quietly woke from its slumber.
+
+The unprecedented proliferation of multijurisdictional regulatory frameworks governing transnational pharmaceutical bioequivalence assessments has engendered substantial epistemic uncertainty among practitioner communities, necessitating comprehensive interdisciplinary recalibration of extant compliance methodologies and concomitant stakeholder engagement protocols.
+
+He said he would go to the park if the weather was nice, and his friend agreed that it would be fun, so they decided to meet at noon by the old fountain near the entrance.
+
+Section 4: Dense Paragraphs
+
+The pathophysiological mechanisms underlying treatment-refractory major depressive disorder encompass a heterogeneous constellation of neurobiological, genetic, and psychosocial variables that collectively impede conventional monoaminergic pharmacotherapy. Emerging evidence implicates dysregulation of glutamatergic neurotransmission, hypothalamic-pituitary-adrenal axis hyperactivation, and neuroinflammatory cascades as pivotal contributors to illness chronicity and functional impairment. Consequently, novel therapeutic strategies targeting ketamine-mediated NMDA receptor antagonism, alongside adjunctive neuromodulatory interventions such as transcranial magnetic stimulation, have garnered considerable empirical validation in recent randomized controlled trials, although long-term durability and mechanistic specificity remain subjects of ongoing investigation. Clinicians must therefore navigate an increasingly complex armamentarium of treatment options while reconciling individualized patient risk profiles with evolving evidence-based guidelines and institutional formulary constraints.
+
+Today was a good day. The weather was warm and sunny, and I decided to take a walk in the park near my house. I saw some ducks by the pond and stopped to watch them for a while. On the way back I stopped at the bakery and got a loaf of bread. My neighbor was outside and we chatted for a few minutes about the upcoming street fair. It is supposed to be a big event this year with food stalls, live music, and games for kids. I am looking forward to it. All in all it was a pleasant and relaxing afternoon.
+
+Section 5: Long Word Detection
+
+The counterintuitive miscommunication between interdepartmental representatives undermined organizational effectiveness.
+
+The big red dog ran fast down the street.
+
+Electromagnetic hypersensitivity and psychoneuroimmunological manifestations remain controversial within contemporary biomedical frameworks.
+
+She quickly reorganized the overflowing bookshelves in the uncomfortable back storeroom.
+
+Section 6: Tricky Edge Cases
+
+Dr. Smith recommended that the patient follow up with Prof. Johnson at St. Mary's Hospital within two weeks.
+
+The NATO STANAG 4569 MRAP APC IED survivability protocol was reviewed by TRADOC and FORSCOM personnel.
+
+Between 2019 and 2023, GDP growth averaged 2.4%, unemployment fell from 6.1% to 3.8%, and inflation peaked at 9.1% before declining to 3.2% by Q4 2023.
+
+Understood.
+
+The well-intentioned, state-of-the-art, cross-disciplinary, evidence-based intervention framework was widely adopted.
+
+— End of test document —

@@ -1,0 +1,75 @@
+Long words detected ['statistically', 'significant']: E.g., the results were statistically significant (p < 0.05).
+
+Long sentence detected (24 words): Section 2: Vocabulary That Fools Zipf Scoring
+
+The cat sat on the mat and the rat ran past the old wooden fence by the barn.
+
+Long words detected ['mitochondria', 'powerhouse']: Mitochondria are the powerhouse of the cell.
+
+Long words detected ['initiative', 'infrastructure']: Google and Microsoft announced a joint initiative to expand broadband infrastructure.
+
+High complexity sentence (Kincaid level 15.45): lol the pharmacokinetic response was unexpectedly nominal across all cohorts.
+
+Long words detected ['pharmacokinetic', 'unexpectedly']: lol the pharmacokinetic response was unexpectedly nominal across all cohorts.
+
+High complexity sentence (Kincaid level 27.25): tbh the bilateral macroeconomic interdependencies are understudied in contemporary literature.
+
+Long words detected ['macroeconomic', 'interdependencies', 'understudied']: tbh the bilateral macroeconomic interdependencies are understudied in contemporary literature.
+
+Long words detected ['immunosuppressive', 'appropriately']: The vibe was off but the immunosuppressive regimen was appropriately titrated.
+
+Long words detected ['immediately', 'consequences']: "You must act immediately," the director warned, "or face the consequences.
+
+High complexity sentence (Kincaid level 16.63): The results — while promising — remain preliminary and require further validation.
+
+Long words detected ['preliminary', 'validation']: The results — while promising — remain preliminary and require further validation.
+
+High complexity sentence (Kincaid level 14.27): Items included: syringes, gauze, antiseptic solution, gloves, and a tourniquet.
+
+Long words detected ['antiseptic', 'tourniquet']: Items included: syringes, gauze, antiseptic solution, gloves, and a tourniquet.
+
+Long sentence detected (23 words): The solution requires 0.9% NaCl diluted 1:10 in sterile water at 37°C.
+
+Section 6: Genuine Ambiguous Cases
+
+Leverage existing cross-functional deliverables to maximize stakeholder alignment.
+
+Long words detected ['functional', 'deliverables', 'stakeholder']: The solution requires 0.9% NaCl diluted 1:10 in sterile water at 37°C.
+
+Section 6: Genuine Ambiguous Cases
+
+Leverage existing cross-functional deliverables to maximize stakeholder alignment.
+
+Long sentence detected (22 words): The thing is, it's not that it doesn't work, it's just that it doesn't always work the way you'd expect it to.
+
+Long sentence detected (25 words): It is what it is, and at the end of the day we have to circle back and move the needle on this going forward.
+
+Long sentence detected (20 words): Section 7: Hyphenated and Compound Words
+
+The well-intentioned, state-of-the-art, cross-disciplinary, evidence-based framework was widely adopted.
+
+High complexity long sentence (Kincaid level 17.01): Section 7: Hyphenated and Compound Words
+
+The well-intentioned, state-of-the-art, cross-disciplinary, evidence-based framework was widely adopted.
+
+Long words detected ['hyphenated', 'intentioned', 'disciplinary']: Section 7: Hyphenated and Compound Words
+
+The well-intentioned, state-of-the-art, cross-disciplinary, evidence-based framework was widely adopted.
+
+High complexity sentence (Kincaid level 16.76): A follow-up meta-analysis of long-term post-operative outcomes was conducted.
+
+High complexity sentence (Kincaid level 15.45): The 24-hour, multi-site, double-blind, placebo-controlled trial enrolled 1,200 participants.
+
+Long words detected ['controlled', 'participants']: The 24-hour, multi-site, double-blind, placebo-controlled trial enrolled 1,200 participants.
+
+Long sentence detected (22 words): But Simple
+
+He went to the store and he bought some milk and he bought some bread and he bought some eggs
+
+Long sentence detected (38 words): She said that she thought that it was likely that the weather would be nice but that she was not sure because the forecast had been wrong before and she did not want to get anyone's hopes up.
+
+High complexity short sentence (word difficulty score 2.25): Renal insufficiency noted.
+
+Long words detected ['inconclusive', 'cautiously']: Results inconclusive.
+
+Proceed cautiously.

@@ -1,0 +1,97 @@
+High complexity short sentence (word difficulty score 5.00): Quantitative epizootiological methodologies predominate.
+
+Long words detected ['quantitative', 'epizootiological', 'methodologies']: Quantitative epizootiological methodologies predominate.
+
+High complexity short sentence (word difficulty score 9.00): Pharmacokinetic contraindications necessitate individualized dosimetry.
+
+Long words detected ['pharmacokinetic', 'contraindications', 'necessitate']: Pharmacokinetic contraindications necessitate individualized dosimetry.
+
+High complexity short sentence (word difficulty score 11.25): Idiosyncratic immunosuppression exacerbates multisystemic pathophysiology.
+
+Long words detected ['idiosyncratic', 'immunosuppression', 'exacerbates']: Idiosyncratic immunosuppression exacerbates multisystemic pathophysiology.
+
+High complexity sentence (Kincaid level 17.62): The patient demonstrated marked improvement following the administration of the prescribed therapeutic regimen.
+
+Long words detected ['demonstrated', 'improvement', 'administration']: The patient demonstrated marked improvement following the administration of the prescribed therapeutic regimen.
+
+High complexity sentence (Kincaid level 33.96): The iterative recalibration of macroeconomic equilibrium necessitates concomitant regulatory restructuring across jurisdictional boundaries.
+
+Long words detected ['recalibration', 'macroeconomic', 'equilibrium']: The iterative recalibration of macroeconomic equilibrium necessitates concomitant regulatory restructuring across jurisdictional boundaries.
+
+High complexity sentence (Kincaid level 39.24): Postoperative hemodynamic stabilization requires vigilant perioperative cardiovascular monitoring and pharmacological intervention protocols.
+
+Long words detected ['postoperative', 'hemodynamic', 'stabilization']: Postoperative hemodynamic stabilization requires vigilant perioperative cardiovascular monitoring and pharmacological intervention protocols.
+
+Long sentence detected (35 words): Section 3: Long Sentences
+
+The sun rose slowly over the mountains, casting long golden shadows across the valley floor, and the birds began to sing their morning songs as the world quietly woke from its slumber.
+
+Long sentence detected (33 words): The unprecedented proliferation of multijurisdictional regulatory frameworks governing transnational pharmaceutical bioequivalence assessments has engendered substantial epistemic uncertainty among practitioner communities, necessitating comprehensive interdisciplinary recalibration of extant compliance methodologies and concomitant stakeholder engagement protocols.
+
+High complexity long sentence (Kincaid level 37.69): The unprecedented proliferation of multijurisdictional regulatory frameworks governing transnational pharmaceutical bioequivalence assessments has engendered substantial epistemic uncertainty among practitioner communities, necessitating comprehensive interdisciplinary recalibration of extant compliance methodologies and concomitant stakeholder engagement protocols.
+
+Long words detected ['unprecedented', 'proliferation', 'multijurisdictional']: The unprecedented proliferation of multijurisdictional regulatory frameworks governing transnational pharmaceutical bioequivalence assessments has engendered substantial epistemic uncertainty among practitioner communities, necessitating comprehensive interdisciplinary recalibration of extant compliance methodologies and concomitant stakeholder engagement protocols.
+
+Long sentence detected (36 words): He said he would go to the park if the weather was nice, and his friend agreed that it would be fun, so they decided to meet at noon by the old fountain near the entrance.
+
+Long sentence detected (28 words): Section 4: Dense Paragraphs
+
+The pathophysiological mechanisms underlying treatment-refractory major depressive disorder encompass a heterogeneous constellation of neurobiological, genetic, and psychosocial variables that collectively impede conventional monoaminergic pharmacotherapy.
+
+High complexity long sentence (Kincaid level 32.42): Section 4: Dense Paragraphs
+
+The pathophysiological mechanisms underlying treatment-refractory major depressive disorder encompass a heterogeneous constellation of neurobiological, genetic, and psychosocial variables that collectively impede conventional monoaminergic pharmacotherapy.
+
+Long words detected ['paragraphs', 'pathophysiological', 'mechanisms']: Section 4: Dense Paragraphs
+
+The pathophysiological mechanisms underlying treatment-refractory major depressive disorder encompass a heterogeneous constellation of neurobiological, genetic, and psychosocial variables that collectively impede conventional monoaminergic pharmacotherapy.
+
+Long sentence detected (24 words): Emerging evidence implicates dysregulation of glutamatergic neurotransmission, hypothalamic-pituitary-adrenal axis hyperactivation, and neuroinflammatory cascades as pivotal contributors to illness chronicity and functional impairment.
+
+High complexity long sentence (Kincaid level 30.54): Emerging evidence implicates dysregulation of glutamatergic neurotransmission, hypothalamic-pituitary-adrenal axis hyperactivation, and neuroinflammatory cascades as pivotal contributors to illness chronicity and functional impairment.
+
+Long words detected ['implicates', 'dysregulation', 'glutamatergic']: Emerging evidence implicates dysregulation of glutamatergic neurotransmission, hypothalamic-pituitary-adrenal axis hyperactivation, and neuroinflammatory cascades as pivotal contributors to illness chronicity and functional impairment.
+
+Long sentence detected (41 words): Consequently, novel therapeutic strategies targeting ketamine-mediated NMDA receptor antagonism, alongside adjunctive neuromodulatory interventions such as transcranial magnetic stimulation, have garnered considerable empirical validation in recent randomized controlled trials, although long-term durability and mechanistic specificity remain subjects of ongoing investigation.
+
+High complexity long sentence (Kincaid level 35.63): Consequently, novel therapeutic strategies targeting ketamine-mediated NMDA receptor antagonism, alongside adjunctive neuromodulatory interventions such as transcranial magnetic stimulation, have garnered considerable empirical validation in recent randomized controlled trials, although long-term durability and mechanistic specificity remain subjects of ongoing investigation.
+
+Long words detected ['consequently', 'therapeutic', 'strategies']: Consequently, novel therapeutic strategies targeting ketamine-mediated NMDA receptor antagonism, alongside adjunctive neuromodulatory interventions such as transcranial magnetic stimulation, have garnered considerable empirical validation in recent randomized controlled trials, although long-term durability and mechanistic specificity remain subjects of ongoing investigation.
+
+Long sentence detected (26 words): Clinicians must therefore navigate an increasingly complex armamentarium of treatment options while reconciling individualized patient risk profiles with evolving evidence-based guidelines and institutional formulary constraints.
+
+High complexity long sentence (Kincaid level 24.84): Clinicians must therefore navigate an increasingly complex armamentarium of treatment options while reconciling individualized patient risk profiles with evolving evidence-based guidelines and institutional formulary constraints.
+
+Long words detected ['clinicians', 'increasingly', 'armamentarium']: Clinicians must therefore navigate an increasingly complex armamentarium of treatment options while reconciling individualized patient risk profiles with evolving evidence-based guidelines and institutional formulary constraints.
+
+High complexity sentence (Kincaid level 28.64): Section 5: Long Word Detection
+
+The counterintuitive miscommunication between interdepartmental representatives undermined organizational effectiveness.
+
+Long words detected ['counterintuitive', 'miscommunication', 'interdepartmental']: Section 5: Long Word Detection
+
+The counterintuitive miscommunication between interdepartmental representatives undermined organizational effectiveness.
+
+High complexity sentence (Kincaid level 38.05): Electromagnetic hypersensitivity and psychoneuroimmunological manifestations remain controversial within contemporary biomedical frameworks.
+
+Long words detected ['electromagnetic', 'hypersensitivity', 'psychoneuroimmunological']: Electromagnetic hypersensitivity and psychoneuroimmunological manifestations remain controversial within contemporary biomedical frameworks.
+
+High complexity sentence (Kincaid level 14.45): She quickly reorganized the overflowing bookshelves in the uncomfortable back storeroom.
+
+Long words detected ['reorganized', 'overflowing', 'bookshelves']: She quickly reorganized the overflowing bookshelves in the uncomfortable back storeroom.
+
+Long sentence detected (33 words): The NATO STANAG 4569 MRAP APC IED survivability protocol was reviewed by TRADOC and FORSCOM personnel.
+
+Between 2019 and 2023, GDP growth averaged 2.4%, unemployment fell from 6.1% to 3.8%, and inflation peaked at 9.1% before declining to 3.2% by Q4 2023.
+
+Understood.
+
+Long words detected ['survivability', 'unemployment', 'understood']: The NATO STANAG 4569 MRAP APC IED survivability protocol was reviewed by TRADOC and FORSCOM personnel.
+
+Between 2019 and 2023, GDP growth averaged 2.4%, unemployment fell from 6.1% to 3.8%, and inflation peaked at 9.1% before declining to 3.2% by Q4 2023.
+
+Understood.
+
+High complexity sentence (Kincaid level 20.17): The well-intentioned, state-of-the-art, cross-disciplinary, evidence-based intervention framework was widely adopted.
+
+Long words detected ['intentioned', 'disciplinary', 'intervention']: The well-intentioned, state-of-the-art, cross-disciplinary, evidence-based intervention framework was widely adopted.
