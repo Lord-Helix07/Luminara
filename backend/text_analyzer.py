@@ -1,5 +1,35 @@
 import warnings
 import os
+import re
+
+# Naysa - normalize acronyms & abbreviations before FK scoring
+def normalize_acronyms_abbrevs(text):
+    abbrevs = {
+        r'\bDr\.': 'Doctor',
+        r'\bMr\.': 'Mister',
+        r'\bMrs\.': 'Missus',
+        r'\bMs\.': 'Miss',
+        r'\bProf\.': 'Professor',
+        r'\bSt\.': 'Saint',
+        r'\betc\.': 'et cetera',
+        r'\bvs\.': 'versus',
+        r'\be\.g\.': 'for example',
+        r'\bi\.e\.': 'that is',
+    }
+    for pattern, replacement in abbrevs.items():
+        text = re.sub(pattern, replacement, text)
+    text = re.sub(r'\b[A-Z]{2,}\b', 'agency', text)
+    return text.strip()
+
+# Naysa - normalize numbers & dates before FK scoring
+def normalize_numbers_dates(text):
+    text = re.sub(r'\$?[\d,]+\.?\d*%?', '', text)
+    text = re.sub(r'\b\d{4}\b', '', text)
+    text = re.sub(r'\b\d+(st|nd|rd|th)\b', '', text)
+    text = re.sub(r' {2,}', ' ', text)
+    text = re.sub(r' ([,\.\!\?;:])', r'\1', text)
+    return text.strip()
+
 
 warnings.filterwarnings(
     "ignore",
@@ -90,7 +120,8 @@ def flagCheck(text):
         #----MEDIUM SENTENCES----
         elif word_count < 20:
             try:
-                kincaid_readability = textstat.flesch_kincaid_grade(sentence_text)
+                normalized = normalize_numbers_dates(normalize_acronyms_abbrevs(sentence_text))  # Naysa
+                kincaid_readability = textstat.flesch_kincaid_grade(normalized)
                 if kincaid_readability > KINCAID_THRESHOLD + 3:
                     flag = f"High complexity sentence (Kincaid level {kincaid_readability:.2f}): {sentence_text}"
                     flags.append(flag)
@@ -110,7 +141,8 @@ def flagCheck(text):
             #if difficulty_per_word >= 0.1:
 
             try:
-                kincaid_readability = textstat.flesch_kincaid_grade(sentence_text)
+                normalized = normalize_numbers_dates(normalize_acronyms_abbrevs(sentence_text))  # Naysa
+                kincaid_readability = textstat.flesch_kincaid_grade(normalized)
                 if kincaid_readability > KINCAID_THRESHOLD + 6:
                     flag = f"High complexity long sentence (Kincaid level {kincaid_readability:.2f}): {sentence_text}"
                     flags.append(flag)
