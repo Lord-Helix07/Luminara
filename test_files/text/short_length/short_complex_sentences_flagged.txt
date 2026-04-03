@@ -1,17 +1,23 @@
-Optimization requires synchronization.
+Long words detected ['optimization', 'synchronization']: Optimization requires synchronization.
 
-Implementation needs modularization.
+High complexity short sentence (word difficulty score 2.50/3): Implementation needs modularization.
 
-Configuration affects scalability.
+Long words detected ['implementation', 'modularization']: Implementation needs modularization.
 
-Abstraction improves interoperability.
+High complexity short sentence (word difficulty score 2.50/3): Configuration affects scalability.
 
-The methodology ensures reproducibility.
+Long words detected ['configuration', 'scalability']: Configuration affects scalability.
 
-Inference depends on prior assumptions.
+High complexity short sentence (word difficulty score 2.50/3): Abstraction improves interoperability.
 
-Latency impacts throughput significantly.
+Long words detected ['abstraction', 'interoperability']: Abstraction improves interoperability.
 
-Encryption ensures data confidentiality.
+Long words detected ['methodology', 'reproducibility']: The methodology ensures reproducibility.
 
-Parameterization improves optimization.
+Long words detected ['throughput', 'significantly']: Latency impacts throughput significantly.
+
+Long words detected ['encryption', 'confidentiality']: Encryption ensures data confidentiality.
+
+High complexity short sentence (word difficulty score 2.50/3): Parameterization improves optimization.
+
+Long words detected ['parameterization', 'optimization']: Parameterization improves optimization.

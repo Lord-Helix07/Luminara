@@ -30,6 +30,10 @@ def normalize_numbers_dates(text):
     text = re.sub(r' ([,\.\!\?;:])', r'\1', text)
     return text.strip()
 
+#nlp imports
+import spacy
+import textstat
+from wordfreq import zipf_frequency
 
 warnings.filterwarnings(
     "ignore",
@@ -37,11 +41,6 @@ warnings.filterwarnings(
     category=Warning,
     module="urllib3",
 )
-
-#nlp imports
-import spacy
-import textstat
-from wordfreq import zipf_frequency
 
 # Constants
 WORD_RARITY_THRESHOLD = 3
@@ -85,8 +84,10 @@ def flagCheck(text):
         if not sentence_text:
             continue
 
-        #words = sentence_text.split()
-        words = [token.text.lower() for token in sentence if token.is_alpha]
+        normalized_sentence_text = normalize_numbers_dates(normalize_acronyms_abbrevs(sentence_text))
+
+        # Runs tokenizer on normalized text
+        words = [token.text.lower() for token in nlp.make_doc(normalized_sentence_text) if token.is_alpha]
 
         if not words:
             continue
@@ -105,7 +106,7 @@ def flagCheck(text):
             #----UNDERFLAGS TRUE POSITIVES----
 
             if difficulty_per_word >= 0.65 or rare_word_count >= 2:
-                flag = f"High complexity short sentence (word difficulty score {sentence_difficulty:.2f}): {sentence_text}"
+                flag = f"High complexity short sentence (word difficulty score {sentence_difficulty:.2f}/{word_count}): {sentence_text}"
                 flags.append(flag)
 
                 triggered_text.append(flag)
@@ -120,8 +121,8 @@ def flagCheck(text):
         #----MEDIUM SENTENCES----
         elif word_count < 20:
             try:
-                normalized = normalize_numbers_dates(normalize_acronyms_abbrevs(sentence_text))  # Naysa
-                kincaid_readability = textstat.flesch_kincaid_grade(normalized)
+  
+                kincaid_readability = textstat.flesch_kincaid_grade(normalized_sentence_text)
                 if kincaid_readability > KINCAID_THRESHOLD + 3:
                     flag = f"High complexity sentence (Kincaid level {kincaid_readability:.2f}): {sentence_text}"
                     flags.append(flag)
@@ -141,8 +142,8 @@ def flagCheck(text):
             #if difficulty_per_word >= 0.1:
 
             try:
-                normalized = normalize_numbers_dates(normalize_acronyms_abbrevs(sentence_text))  # Naysa
-                kincaid_readability = textstat.flesch_kincaid_grade(normalized)
+            
+                kincaid_readability = textstat.flesch_kincaid_grade(normalized_sentence_text)
                 if kincaid_readability > KINCAID_THRESHOLD + 6:
                     flag = f"High complexity long sentence (Kincaid level {kincaid_readability:.2f}): {sentence_text}"
                     flags.append(flag)
@@ -170,10 +171,10 @@ def flagCheck(text):
     for paragraph in paragraphs:
         word_count = len(paragraph.split())
         if word_count > 120:
-            flag = f"Dense paragraph detected ({word_count} words)."
+            flag = f"Dense paragraph detected ({word_count} words): {paragraph}"
             flags.append(flag)
             triggered_text.append(flag)
-            triggered_text.append("\n")
+            
 
     #return stored flags + triggered text
     return flags, triggered_text

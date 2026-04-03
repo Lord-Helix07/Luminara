@@ -1,3 +1,6 @@
+High complexity sentence (Kincaid level 13.06): NLP Flag Checker — Test Document
+This document is designed to exercise every detection branch of the flag checker.
+
 High complexity short sentence (word difficulty score 5.00): Quantitative epizootiological methodologies predominate.
 
 Long words detected ['quantitative', 'epizootiological', 'methodologies']: Quantitative epizootiological methodologies predominate.
@@ -38,7 +41,7 @@ Long sentence detected (28 words): Section 4: Dense Paragraphs
 
 The pathophysiological mechanisms underlying treatment-refractory major depressive disorder encompass a heterogeneous constellation of neurobiological, genetic, and psychosocial variables that collectively impede conventional monoaminergic pharmacotherapy.
 
-High complexity long sentence (Kincaid level 32.42): Section 4: Dense Paragraphs
+High complexity long sentence (Kincaid level 32.96): Section 4: Dense Paragraphs
 
 The pathophysiological mechanisms underlying treatment-refractory major depressive disorder encompass a heterogeneous constellation of neurobiological, genetic, and psychosocial variables that collectively impede conventional monoaminergic pharmacotherapy.
 
@@ -54,7 +57,7 @@ Long words detected ['implicates', 'dysregulation', 'glutamatergic']: Emerging e
 
 Long sentence detected (41 words): Consequently, novel therapeutic strategies targeting ketamine-mediated NMDA receptor antagonism, alongside adjunctive neuromodulatory interventions such as transcranial magnetic stimulation, have garnered considerable empirical validation in recent randomized controlled trials, although long-term durability and mechanistic specificity remain subjects of ongoing investigation.
 
-High complexity long sentence (Kincaid level 35.63): Consequently, novel therapeutic strategies targeting ketamine-mediated NMDA receptor antagonism, alongside adjunctive neuromodulatory interventions such as transcranial magnetic stimulation, have garnered considerable empirical validation in recent randomized controlled trials, although long-term durability and mechanistic specificity remain subjects of ongoing investigation.
+High complexity long sentence (Kincaid level 35.93): Consequently, novel therapeutic strategies targeting ketamine-mediated NMDA receptor antagonism, alongside adjunctive neuromodulatory interventions such as transcranial magnetic stimulation, have garnered considerable empirical validation in recent randomized controlled trials, although long-term durability and mechanistic specificity remain subjects of ongoing investigation.
 
 Long words detected ['consequently', 'therapeutic', 'strategies']: Consequently, novel therapeutic strategies targeting ketamine-mediated NMDA receptor antagonism, alongside adjunctive neuromodulatory interventions such as transcranial magnetic stimulation, have garnered considerable empirical validation in recent randomized controlled trials, although long-term durability and mechanistic specificity remain subjects of ongoing investigation.
 
@@ -64,7 +67,7 @@ High complexity long sentence (Kincaid level 24.84): Clinicians must therefore n
 
 Long words detected ['clinicians', 'increasingly', 'armamentarium']: Clinicians must therefore navigate an increasingly complex armamentarium of treatment options while reconciling individualized patient risk profiles with evolving evidence-based guidelines and institutional formulary constraints.
 
-High complexity sentence (Kincaid level 28.64): Section 5: Long Word Detection
+High complexity sentence (Kincaid level 30.33): Section 5: Long Word Detection
 
 The counterintuitive miscommunication between interdepartmental representatives undermined organizational effectiveness.
 
@@ -80,7 +83,17 @@ High complexity sentence (Kincaid level 14.45): She quickly reorganized the over
 
 Long words detected ['reorganized', 'overflowing', 'bookshelves']: She quickly reorganized the overflowing bookshelves in the uncomfortable back storeroom.
 
-Long sentence detected (33 words): The NATO STANAG 4569 MRAP APC IED survivability protocol was reviewed by TRADOC and FORSCOM personnel.
+Long sentence detected (22 words): Section 6: Tricky Edge Cases
+
+Dr. Smith recommended that the patient follow up with Prof. Johnson at St. Mary's Hospital within two weeks.
+
+Long sentence detected (34 words): The NATO STANAG 4569 MRAP APC IED survivability protocol was reviewed by TRADOC and FORSCOM personnel.
+
+Between 2019 and 2023, GDP growth averaged 2.4%, unemployment fell from 6.1% to 3.8%, and inflation peaked at 9.1% before declining to 3.2% by Q4 2023.
+
+Understood.
+
+High complexity long sentence (Kincaid level 16.03): The NATO STANAG 4569 MRAP APC IED survivability protocol was reviewed by TRADOC and FORSCOM personnel.
 
 Between 2019 and 2023, GDP growth averaged 2.4%, unemployment fell from 6.1% to 3.8%, and inflation peaked at 9.1% before declining to 3.2% by Q4 2023.
 
