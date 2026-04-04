@@ -15,6 +15,21 @@ def normalize_acronyms_abbrevs(text):
         r'\bvs\.': 'versus',
         r'\be\.g\.': 'for example',
         r'\bi\.e\.': 'that is',
+        r'\bapprox\.': 'approximately',
+        r'\bJan\.': 'January',
+        r'\bFeb\.': 'February',
+        r'\bMar\.': 'March',
+        r'\bApr\.': 'April',
+        r'\bAug\.': 'August',
+        r'\bSept\.': 'September',
+        r'\bOct\.': 'October',
+        r'\bNov\.': 'November',
+        r'\bDec\.': 'December',
+        r'\best\.': 'established',
+        r'\bfig\.': 'figure',
+        r'\bno\.': 'number',
+        r'\bSr\.': 'Senior',
+        r'\bJr\.': 'Junior'
     }
     for pattern, replacement in abbrevs.items():
         text = re.sub(pattern, replacement, text)

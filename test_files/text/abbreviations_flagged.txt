@@ -1,0 +1,16 @@
+Long sentence detected (21 words): Titles mid-sentence (spaCy boundary risk)
+Dr. Smith and Prof. Jones co-authored the study with Mrs. Patterson from St. Mary's.
+
+High complexity sentence (Kincaid level 14.25): Mr. and Mrs. Chen attended the lecture given by Prof. Williams on vs. comparisons in literature.
+
+Long words detected ['comparisons', 'literature']: Mr. and Mrs. Chen attended the lecture given by Prof. Williams on vs. comparisons in literature.
+
+Long words detected ['participants', 'originally']: 200 participants were enrolled, i.e. the full cohort, vs. the 150 originally planned.
+
+Long sentence detected (20 words): We compared treatment A vs. treatment B.
+
+Domain-specific not in list
+The Sgt. reported to Lt. Col. Harris at approx.
+
+High complexity sentence (Kincaid level 14.37): Mixed with acronyms
+Dr. Patel from the WHO presented findings to the CDC alongside Prof. Lee from MIT.

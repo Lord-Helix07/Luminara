@@ -1,6 +1,6 @@
 NLP Flag Checker — Tricky Edge Cases Test Document
 
-Section 1: Sentence Boundary Confusion
+
 
 The U.S. economy grew 3.2% in Q3. Analysts expect further gains.
 
@@ -12,7 +12,7 @@ E.g., the results were statistically significant (p < 0.05).
 
 The patient was prescribed 10mg i.e. the standard adult dose.
 
-Section 2: Vocabulary That Fools Zipf Scoring
+
 
 The cat sat on the mat and the rat ran past the old wooden fence by the barn.
 
@@ -22,7 +22,7 @@ Pfizer's mRNA vaccine demonstrated strong efficacy in phase three trials.
 
 Google and Microsoft announced a joint initiative to expand broadband infrastructure.
 
-Section 3: Mixed Register
+
 
 The CEO said the Q4 synergies would leverage our core competencies going forward.
 
@@ -32,7 +32,7 @@ tbh the bilateral macroeconomic interdependencies are understudied in contempora
 
 The vibe was off but the immunosuppressive regimen was appropriately titrated.
 
-Section 4: Punctuation Heavy
+
 
 Wait — is this right? No, it can't be — check again.
 
@@ -44,7 +44,7 @@ The results — while promising — remain preliminary and require further valid
 
 Items included: syringes, gauze, antiseptic solution, gloves, and a tourniquet.
 
-Section 5: Numbers and Units
+
 
 Administer 2.5mg/kg IV over 30 minutes, not to exceed 200mg total dose.
 
@@ -54,7 +54,7 @@ Between 1999–2003, mortality rates declined by 14.7% across all age groups (n=
 
 The solution requires 0.9% NaCl diluted 1:10 in sterile water at 37°C.
 
-Section 6: Genuine Ambiguous Cases
+
 
 Leverage existing cross-functional deliverables to maximize stakeholder alignment.
 
@@ -64,7 +64,7 @@ The thing is, it's not that it doesn't work, it's just that it doesn't always wo
 
 It is what it is, and at the end of the day we have to circle back and move the needle on this going forward.
 
-Section 7: Hyphenated and Compound Words
+
 
 The well-intentioned, state-of-the-art, cross-disciplinary, evidence-based framework was widely adopted.
 
@@ -72,13 +72,13 @@ A follow-up meta-analysis of long-term post-operative outcomes was conducted.
 
 The 24-hour, multi-site, double-blind, placebo-controlled trial enrolled 1,200 participants.
 
-Section 8: Very Long But Simple
+
 
 He went to the store and he bought some milk and he bought some bread and he bought some eggs and then he went home and he made breakfast and it was good.
 
 She said that she thought that it was likely that the weather would be nice but that she was not sure because the forecast had been wrong before and she did not want to get anyone's hopes up.
 
-Section 9: Very Short But Ambiguous
+
 
 Anesthesia failed.
 

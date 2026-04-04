@@ -1,0 +1,24 @@
+Titles mid-sentence (spaCy boundary risk)
+Dr. Smith and Prof. Jones co-authored the study with Mrs. Patterson from St. Mary's.
+
+Mr. and Mrs. Chen attended the lecture given by Prof. Williams on vs. comparisons in literature.
+
+Chained abbreviations
+The report, e.g. the Q3 summary, was submitted late i.e. after the Nov. deadline.
+
+Approx. 200 participants were enrolled, i.e. the full cohort, vs. the 150 originally planned.
+
+Abbreviations at end of sentence (double period problem)
+The patient was referred to Dr. Martinez.
+
+We compared treatment A vs. treatment B.
+
+Domain-specific not in list
+The Sgt. reported to Lt. Col. Harris at approx. 0600 hrs.
+
+The dept. submitted the memo to the govt. liaison via the atty. general's office.
+
+Mixed with acronyms
+Dr. Patel from the WHO presented findings to the CDC alongside Prof. Lee from MIT.
+
+The U.S. GDP report, i.e. the Q4 summary, was reviewed by the Fed. and the IMF.
