@@ -69,6 +69,9 @@ export default function LuminaraHome() {
     console.log("File:", file);
 
     try{ 
+
+      console.log("About to fetch");
+
       const response = await fetch("http://localhost:5050/convert", {
       method: "POST",
       body: formData
@@ -81,9 +84,12 @@ export default function LuminaraHome() {
       console.log("Data:", data);
 
       if(!response.ok){
+        console.log("Response not ok");
         setError(data.error || "Failed to convert");  // Use backend error or fallback msg
         return;
       }
+
+      console.log("Navigating");
 
       navigate("/result", {
         state: { text: data.text }

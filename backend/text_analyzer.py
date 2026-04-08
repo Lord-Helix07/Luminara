@@ -128,7 +128,7 @@ def flagCheck(text):
                 flag = f"High complexity short sentence (word difficulty score {sentence_difficulty:.2f}/{word_count}): {sentence_text}"
                 flags.append(flag)
 
-                triggered_text.append(flag)
+                triggered_text.append(sentence_text)
          
             
 
@@ -145,7 +145,7 @@ def flagCheck(text):
                 if kincaid_readability > KINCAID_THRESHOLD + 3:
                     flag = f"High complexity sentence (Kincaid level {kincaid_readability:.2f}): {sentence_text}"
                     flags.append(flag)
-                    triggered_text.append(flag)
+                    triggered_text.append(sentence_text)
             
 
             except Exception:
@@ -155,7 +155,7 @@ def flagCheck(text):
         else:
             flag = f"Long sentence detected ({word_count} words): {sentence_text}"
             flags.append(flag)
-            triggered_text.append(flag)
+            triggered_text.append(sentence_text)
        
 
             #if difficulty_per_word >= 0.1:
@@ -166,7 +166,7 @@ def flagCheck(text):
                 if kincaid_readability > KINCAID_THRESHOLD + 6:
                     flag = f"High complexity long sentence (Kincaid level {kincaid_readability:.2f}): {sentence_text}"
                     flags.append(flag)
-                    triggered_text.append(flag)
+                    triggered_text.append(sentence_text)
               
 
             except Exception:
@@ -180,7 +180,7 @@ def flagCheck(text):
         if len(long_words) >= 2:
             flag = f"Long words detected {long_words[:3]}: {sentence_text}"
             flags.append(flag)
-            triggered_text.append(flag)
+            triggered_text.append(sentence_text)
         
 
 
@@ -192,7 +192,7 @@ def flagCheck(text):
         if word_count > 120:
             flag = f"Dense paragraph detected ({word_count} words): {paragraph}"
             flags.append(flag)
-            triggered_text.append(flag)
+            triggered_text.append(paragraph.strip())
             
 
     #return stored flags + triggered text
