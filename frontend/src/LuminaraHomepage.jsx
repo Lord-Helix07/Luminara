@@ -55,6 +55,8 @@ export default function LuminaraHome() {
 
   const handleConvert = async () => {
 
+    console.log("Convert button clicked");
+
     if(!file){
       setError("No file selected");
       return;
@@ -64,13 +66,19 @@ export default function LuminaraHome() {
     const formData = new FormData();
     formData.append("file", file);
 
+    console.log("File:", file);
+
     try{ 
       const response = await fetch("http://localhost:5050/convert", {
       method: "POST",
       body: formData
       });
 
+      console.log("Response recieved:", response.status);
+
       const data = await response.json();
+
+      console.log("Data:", data);
 
       if(!response.ok){
         setError(data.error || "Failed to convert");  // Use backend error or fallback msg

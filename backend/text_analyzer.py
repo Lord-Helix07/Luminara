@@ -79,18 +79,22 @@ def word_difficulty(word):
 
     return score
 
+try:
+    nlp = spacy.load("en_core_web_sm")
+except Exception:
+    nlp = None
+
 #logic for storing + finding flags (Vishalkiran)
 def flagCheck(text):
 
     flags = []
     triggered_text = []
 
-    try:
-        nlp = spacy.load("en_core_web_sm")
-        doc = nlp(text)
-    except Exception:
+    if nlp is None:
         flags.append("NLP model could not be loaded.")
         return flags, triggered_text
+    
+    doc = nlp(text)
     
     # Checks by short, long, and medium length sentences (Ryan)
     for sentence in doc.sents:
