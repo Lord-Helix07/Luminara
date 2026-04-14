@@ -3,6 +3,7 @@ This page is unfinished and just has the UI for right now.
 We will be using the dictionary page in order to allow the user to add confusing words to the dictionary.
 Text on discord if you need help with the code or understanding what the page is for.
 Assigned to : Ryan + Vishal
+  * will need to edit server.py as well
 */
 
 import { Link } from "react-router-dom";

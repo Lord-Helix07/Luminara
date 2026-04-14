@@ -1,3 +1,7 @@
+/*
+This page is used to sign in the user to the Luminara app.
+*/
+
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useTheme } from "./ThemeContext.jsx";

@@ -1,3 +1,7 @@
+/*
+This page is used to display the result of the simplified text, page 2 of luminara
+*/
+
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTheme, resultPalettes } from "./ThemeContext.jsx";
