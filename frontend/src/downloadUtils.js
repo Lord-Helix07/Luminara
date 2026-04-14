@@ -1,3 +1,11 @@
+/*
+This file is used to download the converted text in the desired format depending on the file
+Needs to be edited to output in the desired format
+  * will need to edit script.py and server.py as well
+Assigned to : Shubh + Suhas/Shivaji
+Text on discord if you need help with the code or understanding what the file is for.
+*/
+
 import { jsPDF } from "jspdf";
 
 function escapeHtml(s) {
@@ -13,6 +21,8 @@ function escapeHtml(s) {
  * @param {'txt' | 'pdf' | 'doc'} format
  * @param {string} [baseName] filename without extension
  */
+
+//downloads the converted text in the desired format depending on the file
 export function downloadConvertedText(text, format, baseName = "luminara-output") {
   const safeBase = baseName.replace(/[/\\?%*:|"<>]/g, "-").slice(0, 120) || "luminara-output";
 
@@ -54,6 +64,7 @@ export function downloadConvertedText(text, format, baseName = "luminara-output"
   triggerDownload(blob, `${safeBase}.txt`);
 }
 
+//triggers the download of the converted text
 function triggerDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

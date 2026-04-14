@@ -1,11 +1,12 @@
 import { useState, useRef, useMemo, useEffect } from "react";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 import { useTheme } from "./ThemeContext.jsx";
 import { ToggleSwitch } from "./ToggleSwitch.jsx";
 import { SettingsMenu } from "./SettingsMenu.jsx";
 import { API_BASE_URL } from "./api.js";
+import { useAuth } from "./AuthContext.jsx";
 
-/** Maps input extension → output format option value (txt | pdf | doc). */
+// If you put in a pdf, the ouput file autmatically changes to pdf, doc -> doc, slides -> slides
 function formatForUploadedFile(fileName) {
   const ext = fileName.slice(((fileName.lastIndexOf(".") - 1) >>> 0) + 2).toLowerCase();
   if (ext === "pdf") return "pdf";
@@ -15,10 +16,16 @@ function formatForUploadedFile(fileName) {
   if (ext === "png" || ext === "jpg" || ext === "jpeg") return "txt";
   return "";
 }
-
-export default function LuminaraHome() {
+// This is the homepage of the Luminara app.
+// It allows the user to 
+  // - upload a file or enter text to simplify.
+  // -select the output format and language.
+  // -select the page range to simplify.
+  // -select the TTS voice and speed.
+export default function LuminaraHomepage() {
   const navigate = useNavigate();
   const { t } = useTheme();
+  const { user, logout } = useAuth();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef(null);
   const [format, setFormat] = useState("");
@@ -33,6 +40,7 @@ export default function LuminaraHome() {
   const [speed, setSpeed] = useState(1.0);
   const [dragOver, setDragOver] = useState(false);
   const [file, setFile] = useState(null);
+  const [manualText, setManualText] = useState("");
   const fileInputRef = useRef();
   const [error, setError] = useState("");   // Error msg (init empty)
   const [loading, setLoading] = useState(false);
@@ -48,8 +56,23 @@ export default function LuminaraHome() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, [settingsOpen]);
 
+  useEffect(() => {
+    // Warm up backend/Ollama on initial page load.
+    fetch(`${API_BASE_URL}/warmup`, { method: "POST" }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!simplify) return;
+    setFormat("txt");
+  }, [simplify]);
+
   const formValid = useMemo(() => {
-    if (!file) return false;
+    if (simplify) {
+      if (!manualText.trim()) return false;
+      if (format !== "txt") return false;
+    } else {
+      if (!file) return false;
+    }
     if (!format) return false;
     if (!language) return false;
     if (pageRange === "custom") {
@@ -59,11 +82,15 @@ export default function LuminaraHome() {
       if (start < 1 || end < 1 || start > end) return false;
     }
     return true;
-  }, [file, format, language, pageRange, startPage, endPage]);
+  }, [file, manualText, simplify, format, language, pageRange, startPage, endPage]);
 
   const validationMessage = () => {
     const missing = [];
-    if (!file) missing.push("upload a file");
+    if (simplify) {
+      if (!manualText.trim()) missing.push("enter text to simplify");
+    } else if (!file) {
+      missing.push("upload a file");
+    }
     if (!format) missing.push("choose an output format");
     if (!language) missing.push("select a language");
     if (pageRange === "custom") {
@@ -100,6 +127,7 @@ export default function LuminaraHome() {
     setFormat(""); setLanguage("en"); setPageRange("all");
     setTts(false); setSimplify(false);
     setSpeed(1.0); setVoice("female-natural"); setFile(null);
+    setManualText("");
     setStartPage(""); setEndPage("");
     setError("");
   };
@@ -116,15 +144,24 @@ export default function LuminaraHome() {
     }
     setError("");
 
-    const formData = new FormData();
-    formData.append("file", file);
-
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/convert`, {
-        method: "POST",
-        body: formData,
-      });
+      let response;
+      if (simplify) {
+        // POST /convert with JSON — same route nginx already proxies in Docker
+        response = await fetch(`${API_BASE_URL}/convert`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: manualText }),
+        });
+      } else {
+        const formData = new FormData();
+        formData.append("file", file);
+        response = await fetch(`${API_BASE_URL}/convert`, {
+          method: "POST",
+          body: formData,
+        });
+      }
 
       const data = await response.json();
 
@@ -133,8 +170,9 @@ export default function LuminaraHome() {
         return;
       }
 
-      const downloadBaseName =
-        file?.name?.replace(/\.[^.]+$/, "").replace(/[/\\?%*:|"<>]/g, "-").trim() || "luminara-output";
+      const downloadBaseName = simplify
+        ? "simplified-text"
+        : (file?.name?.replace(/\.[^.]+$/, "").replace(/[/\\?%*:|"<>]/g, "-").trim() || "luminara-output");
 
       navigate("/result", {
         state: {
@@ -179,6 +217,84 @@ export default function LuminaraHome() {
           padding: "18px 48px", position: "relative",
           borderBottom: `1px solid ${t.headerBorder}`, background: t.headerBg,
         }}>
+          <div
+            style={{
+              position: "absolute",
+              left: "48px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+            }}
+          >
+            {user ? (
+              <>
+                <button
+                  type="button"
+                  aria-label="Dictionary"
+                  onClick={() => navigate("/dictionary")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    padding: "8px 14px",
+                    background: "transparent",
+                    border: `1px solid ${t.selectBorder}`,
+                    borderRadius: "999px",
+                    color: t.text,
+                    cursor: "pointer",
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                  }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                    <path d="M8 7h8M8 11h6" />
+                  </svg>
+                  Dictionary
+                </button>
+                <button
+                  type="button"
+                  onClick={() => logout()}
+                  style={{
+                    background: "transparent",
+                    border: `1px solid ${t.selectBorder}`,
+                    color: t.text,
+                    padding: "8px 16px",
+                    borderRadius: "999px",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    cursor: "pointer",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  Log out
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => navigate("/signin")}
+                style={{
+                  background: "transparent",
+                  border: `1px solid ${t.selectBorder}`,
+                  color: t.text,
+                  padding: "8px 16px",
+                  borderRadius: "999px",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  cursor: "pointer",
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                Sign in
+              </button>
+            )}
+          </div>
           <h1 style={{
             fontSize: "28px", fontWeight: "700",
             fontFamily: "'Playfair Display', serif",
@@ -218,50 +334,85 @@ export default function LuminaraHome() {
           }}>
             <div style={{ display: "flex", gap: "48px", alignItems: "stretch" }}>
 
-              {/* LEFT: Upload */}
+              {/* LEFT: Upload or manual text */}
               <div style={{ flex: 1.1, display: "flex", flexDirection: "column" }}>
-                <div
-                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                  onDragLeave={() => setDragOver(false)}
-                  onDrop={handleDrop}
-                  onClick={() => fileInputRef.current.click()}
-                  style={{
-                    border: `2px dashed ${dragOver ? t.dropBorderHi : t.dropBorder}`,
+                {simplify ? (
+                  <div style={{
+                    border: `1px solid ${t.selectBorder}`,
                     borderRadius: "14px",
                     flex: 1,
-                    display: "flex", flexDirection: "column",
-                    alignItems: "center", justifyContent: "center",
-                    cursor: "pointer",
-                    background: dragOver ? t.dropBgHi : t.dropBg,
-                    transition: "all 0.2s", gap: "14px",
-                  }}
-                >
-                  <input ref={fileInputRef} type="file" style={{ display: "none" }}
-                    onChange={handleFileInputChange} />
-                  <div style={{
-                    width: "64px", height: "64px", background: t.iconBoxBg,
-                    borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center",
+                    display: "flex",
+                    flexDirection: "column",
+                    background: t.inputBg,
+                    padding: "16px",
+                    gap: "10px",
                   }}>
-                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={t.brand} strokeWidth="1.8">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                      <polyline points="17 8 12 3 7 8"/>
-                      <line x1="12" y1="3" x2="12" y2="15"/>
-                    </svg>
+                    <label style={{ fontSize: "14px", fontWeight: "500", color: t.text }}>
+                      Enter text to simplify
+                    </label>
+                    <textarea
+                      value={manualText}
+                      onChange={(e) => setManualText(e.target.value)}
+                      placeholder="Paste or type text here..."
+                      style={{
+                        width: "100%",
+                        minHeight: "220px",
+                        resize: "vertical",
+                        borderRadius: "10px",
+                        border: `1px solid ${t.selectBorder}`,
+                        background: t.selectBg,
+                        color: t.inputFg,
+                        padding: "12px",
+                        fontSize: "14px",
+                        fontFamily: "'DM Sans', sans-serif",
+                        lineHeight: 1.4,
+                      }}
+                    />
                   </div>
-                  {file ? (
-                    <p style={{ color: t.brand, fontSize: "14px", textAlign: "center" }}>{file.name}</p>
-                  ) : (
-                    <p style={{ color: t.textMuted, fontSize: "14px" }}>Drag and drop your file here</p>
-                  )}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); fileInputRef.current.click(); }}
+                ) : (
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current.click()}
                     style={{
-                      background: t.btn, color: "white", border: "none",
-                      borderRadius: "22px", padding: "11px 32px", fontSize: "14px",
-                      cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontWeight: "500",
+                      border: `2px dashed ${dragOver ? t.dropBorderHi : t.dropBorder}`,
+                      borderRadius: "14px",
+                      flex: 1,
+                      display: "flex", flexDirection: "column",
+                      alignItems: "center", justifyContent: "center",
+                      cursor: "pointer",
+                      background: dragOver ? t.dropBgHi : t.dropBg,
+                      transition: "all 0.2s", gap: "14px",
                     }}
-                  >Select File</button>
-                </div>
+                  >
+                    <input ref={fileInputRef} type="file" style={{ display: "none" }}
+                      onChange={handleFileInputChange} />
+                    <div style={{
+                      width: "64px", height: "64px", background: t.iconBoxBg,
+                      borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={t.brand} strokeWidth="1.8">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                      </svg>
+                    </div>
+                    {file ? (
+                      <p style={{ color: t.brand, fontSize: "14px", textAlign: "center" }}>{file.name}</p>
+                    ) : (
+                      <p style={{ color: t.textMuted, fontSize: "14px" }}>Drag and drop your file here</p>
+                    )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); fileInputRef.current.click(); }}
+                      style={{
+                        background: t.btn, color: "white", border: "none",
+                        borderRadius: "22px", padding: "11px 32px", fontSize: "14px",
+                        cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontWeight: "500",
+                      }}
+                    >Select File</button>
+                  </div>
+                )}
                 <p style={{ color: t.textFooter, fontSize: "12px", textAlign: "center", marginTop: "12px" }}>
                   Files are processed temporarily — not stored.
                 </p>
@@ -275,16 +426,31 @@ export default function LuminaraHome() {
                   <label style={{ fontSize: "14px", fontWeight: "500", color: t.text, display: "block", marginBottom: "8px" }}>
                     Choose Output File Format
                   </label>
-                  <select value={format} onChange={(e) => setFormat(e.target.value)} style={{
-                    width: "100%", padding: "10px 12px", borderRadius: "8px",
-                    border: `1px solid ${t.selectBorder}`, fontSize: "14px", fontFamily: "'DM Sans', sans-serif",
-                    background: t.selectBg, color: t.selectFg,
-                  }}>
-                    <option value="">Select format</option>
-                    <option value="txt">TXT</option>
-                    <option value="pdf">PDF</option>
-                    <option value="doc">DOC</option>
-                  </select>
+                  {simplify ? (
+                    <div style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: "8px",
+                      border: `1px solid ${t.selectBorder}`,
+                      fontSize: "14px",
+                      fontFamily: "'DM Sans', sans-serif",
+                      background: t.inputBg,
+                      color: t.textSoft,
+                    }}>
+                      TXT (required for simplify mode)
+                    </div>
+                  ) : (
+                    <select value={format} onChange={(e) => setFormat(e.target.value)} style={{
+                      width: "100%", padding: "10px 12px", borderRadius: "8px",
+                      border: `1px solid ${t.selectBorder}`, fontSize: "14px", fontFamily: "'DM Sans', sans-serif",
+                      background: t.selectBg, color: t.selectFg,
+                    }}>
+                      <option value="">Select format</option>
+                      <option value="txt">TXT</option>
+                      <option value="pdf">PDF</option>
+                      <option value="doc">DOC</option>
+                    </select>
+                  )}
                 </div>
 
                 {/* Language */}
@@ -434,7 +600,7 @@ export default function LuminaraHome() {
 
             {!formValid && !error ? (
               <p style={{ marginTop: "16px", color: t.textHint, fontSize: "13px", textAlign: "center" }}>
-                Select a file, output format, and language
+                {simplify ? "Enter text, then select language" : "Select a file, output format, and language"}
                 {pageRange === "custom" ? " — and valid start/end pages for custom range." : "."}
               </p>
             ) : null}

@@ -1,3 +1,7 @@
+/*
+This file is used to toggle the switch on the homepage.
+*/
+
 export function ToggleSwitch({ enabled, onChange }) {
   return (
     <button

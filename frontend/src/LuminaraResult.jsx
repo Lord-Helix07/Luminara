@@ -3,11 +3,13 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useTheme, resultPalettes } from "./ThemeContext.jsx";
 import { SettingsMenu } from "./SettingsMenu.jsx";
 import { downloadConvertedText, formatLabel } from "./downloadUtils.js";
+import { useAuth } from "./AuthContext.jsx";
 
 export default function LuminaraResult() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { darkMode, t } = useTheme();
+  const { darkMode } = useTheme();
+  const { user, logout } = useAuth();
   const R = darkMode ? resultPalettes.dark : resultPalettes.light;
 
   const text = location.state?.text || "No text available";
@@ -70,6 +72,75 @@ export default function LuminaraResult() {
           position: "sticky", top: 0, zIndex: 100,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {user ? (
+              <>
+                <button
+                  type="button"
+                  aria-label="Dictionary"
+                  onClick={() => navigate("/dictionary")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
+                    padding: "6px 12px",
+                    background: "transparent",
+                    border: `1px solid ${R.border}`,
+                    borderRadius: "999px",
+                    color: R.text,
+                    cursor: "pointer",
+                    marginRight: "2px",
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                    <path d="M8 7h8M8 11h6" />
+                  </svg>
+                  Dictionary
+                </button>
+                <button
+                  type="button"
+                  onClick={() => logout()}
+                  style={{
+                    border: `1px solid ${R.border}`,
+                    background: "transparent",
+                    color: R.text,
+                    padding: "6px 14px",
+                    borderRadius: "999px",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    cursor: "pointer",
+                    fontFamily: "'DM Sans', sans-serif",
+                    marginRight: "4px",
+                  }}
+                >
+                  Log out
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => navigate("/signin")}
+                style={{
+                  border: `1px solid ${R.border}`,
+                  background: "transparent",
+                  color: R.text,
+                  padding: "6px 14px",
+                  borderRadius: "999px",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  cursor: "pointer",
+                  fontFamily: "'DM Sans', sans-serif",
+                  marginRight: "4px",
+                }}
+              >
+                Sign in
+              </button>
+            )}
             <button
               type="button"
               onClick={() => navigate("/")}
