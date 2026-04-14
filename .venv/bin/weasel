@@ -1,4 +1,4 @@
-#!/Users/ryandeng/Desktop/SJSU/Clubs/RCC/Luminara/.venv/bin/python
+#!/Users/shiva/Coding/Luminara/Untitled/.venv/bin/python3.12
 import sys
 from weasel.cli import app
 if __name__ == '__main__':

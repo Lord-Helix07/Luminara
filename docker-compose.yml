@@ -1,0 +1,29 @@
+# Luminara — web UI + Flask API. Open http://localhost:8080
+# Run: docker compose up --build
+#
+# Ollama (optional, for text simplification): runs on the host by default.
+# The backend uses host.docker.internal:11434. Pull a model on the host, e.g.:
+#   ollama pull llama3
+
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "5050"
+      FLASK_DEBUG: "0"
+      OLLAMA_BASE_URL: "${OLLAMA_BASE_URL:-http://host.docker.internal:11434}"
+      OLLAMA_MODEL: "${OLLAMA_MODEL:-llama3}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: ""
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend

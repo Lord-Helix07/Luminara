@@ -1,4 +1,4 @@
-#!/Users/ryandeng/Desktop/SJSU/Clubs/RCC/Luminara/.venv/bin/python
+#!/Users/shiva/Coding/Luminara/Untitled/.venv/bin/python3.12
 
 ##############################################################################
 #
