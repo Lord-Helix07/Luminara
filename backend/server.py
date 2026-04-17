@@ -9,7 +9,7 @@ from auth_service import (
     create_token,
     verify_token_string,
 )
-import tempfile, os, requests
+import tempfile, os, re, requests
 from threading import Thread
 
 app = Flask(__name__)
@@ -19,6 +19,10 @@ init_db()
 
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3")
+# Fewer HTTP round-trips: rewrite several sentences per Ollama call (default 6).
+OLLAMA_REWRITE_BATCH_SIZE = max(1, int(os.environ.get("OLLAMA_REWRITE_BATCH_SIZE", "6")))
+# Cap total rewrites per request so very long docs finish in reasonable time (0 = no cap).
+OLLAMA_MAX_REWRITES = int(os.environ.get("OLLAMA_MAX_REWRITES", "40"))
 #warms up the ollama model so that it takes less time to respond to the first request
 def warmup_ollama():
     try:
@@ -47,18 +51,28 @@ def process_plain_text(text):
 
     flags, triggered_sentences = flagCheck(text)
 
-    improved_text = text
+    to_rewrite = []
     seen = set()
     for sentence in triggered_sentences:
         if sentence in seen or len(sentence.split()) < 5 or sentence.startswith('•'):
             continue
         seen.add(sentence)
-        rewritten = rewrite_sentence(sentence)
-        if rewritten and rewritten != sentence:
-            normalized = ' '.join(sentence.split())
-            normalized_text = ' '.join(improved_text.split())
-            if normalized in normalized_text:
-                improved_text = improved_text.replace(sentence, rewritten, 1)
+        to_rewrite.append(sentence)
+
+    if OLLAMA_MAX_REWRITES > 0 and len(to_rewrite) > OLLAMA_MAX_REWRITES:
+        to_rewrite = to_rewrite[:OLLAMA_MAX_REWRITES]
+
+    improved_text = text
+    batch_size = OLLAMA_REWRITE_BATCH_SIZE
+    for i in range(0, len(to_rewrite), batch_size):
+        batch = to_rewrite[i : i + batch_size]
+        rewritten_list = rewrite_sentences_batch(batch)
+        for sentence, rewritten in zip(batch, rewritten_list):
+            if rewritten and rewritten != sentence:
+                normalized = ' '.join(sentence.split())
+                normalized_text = ' '.join(improved_text.split())
+                if normalized in normalized_text:
+                    improved_text = improved_text.replace(sentence, rewritten, 1)
 
     return {
         "text": improved_text,
@@ -67,20 +81,86 @@ def process_plain_text(text):
         "flagged_count": len(triggered_sentences),
     }
 
-#asks ollama to rewrite the sentence in simple English
+def _ollama_generate(prompt, num_predict=512, temperature=0.3):
+    response = requests.post(
+        f"{OLLAMA_BASE_URL}/api/generate",
+        json={
+            "model": OLLAMA_MODEL,
+            "prompt": prompt,
+            "stream": False,
+            "options": {"temperature": temperature, "num_predict": num_predict},
+        },
+        timeout=300,
+    )
+    response.raise_for_status()
+    return response.json()["response"].strip()
+
+
+def _parse_numbered_rewrites(response_text, n):
+    """Expect lines like '1. ...' through 'n. ...'."""
+    if n <= 0:
+        return []
+    out = [None] * n
+    numbered = re.compile(r"^\s*(\d+)\s*[\.\)]\s*(.+)$")
+    for line in response_text.splitlines():
+        m = numbered.match(line.strip())
+        if not m:
+            continue
+        idx = int(m.group(1)) - 1
+        if 0 <= idx < n:
+            out[idx] = m.group(2).strip()
+    if all(x is not None for x in out):
+        return out
+    # Fallback: non-empty lines without numbers (model forgot numbering)
+    lines = [ln.strip() for ln in response_text.splitlines() if ln.strip()]
+    lines = [ln for ln in lines if not ln.lower().startswith(("here", "sure", "below"))]
+    if len(lines) >= n:
+        return lines[:n]
+    return None
+
+
+# asks ollama to rewrite sentences in simple English (batched to reduce latency on long docs)
+def rewrite_sentences_batch(sentences):
+    if not sentences:
+        return []
+    if len(sentences) == 1:
+        return [rewrite_sentence(sentences[0])]
+
+    n = len(sentences)
+    block = "\n".join(f"{i + 1}. {s}" for i, s in enumerate(sentences))
+    prompt = f"""Rewrite each numbered sentence in simple English. Use short words. Keep the same meaning. Do not add commentary.
+Output exactly {n} lines. Each line must start with its number, a period, a space, then the rewritten sentence only.
+Example format:
+1. First simplified sentence here.
+2. Second simplified sentence here.
+
+Sentences to simplify:
+{block}
+
+Your answer ({n} numbered lines only):"""
+
+    num_predict = min(2048, max(128, 48 * n))
+    try:
+        raw = _ollama_generate(prompt, num_predict=num_predict, temperature=0.25)
+        parsed = _parse_numbered_rewrites(raw, n)
+        if parsed is not None:
+            return parsed
+        print("Ollama batch parse failed; falling back to one-by-one for this batch.")
+    except Exception as e:
+        print(f"Ollama batch error: {e}")
+
+    return [rewrite_sentence(s) for s in sentences]
+
+
+# asks ollama to rewrite a single sentence in simple English
 def rewrite_sentence(sentence):
     prompt = f"""Rewrite this sentence in simple English. Use short words. Keep the same meaning. Do not add anything extra. Do not rewrite lists or bullet points. Return only the rewritten sentence.
 
 Sentence: {sentence}
 Simple version:"""
     try:
-        response = requests.post(
-            f"{OLLAMA_BASE_URL}/api/generate",
-            json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": False, "options": {"temperature": 0.3}},
-            timeout=120,
-        )
-        response.raise_for_status()
-        return response.json()["response"].strip()
+        out = _ollama_generate(prompt, num_predict=256, temperature=0.3)
+        return out
     except Exception as e:
         print(f"Ollama error: {e}")
         return sentence
