@@ -1,23 +1,31 @@
 # Luminara — web UI + Flask API. Open http://localhost:8080
 # Run: docker compose up --build
-#
-# Ollama (optional, for text simplification): runs on the host by default.
-# The backend uses host.docker.internal:11434. Pull a model on the host, e.g.:
-#   ollama pull llama3
+# Runs frontend + backend + ollama together:
+#   docker compose up --build
+# First time model pull:
+#   docker compose exec ollama ollama pull llama3
 
+
+#hosts backend and uses 5050 as ports
 services:
   backend:
     build:
       context: ./backend
+    ports:
+      - "5050:5050"
     environment:
       HOST: "0.0.0.0"
       PORT: "5050"
       FLASK_DEBUG: "0"
-      OLLAMA_BASE_URL: "${OLLAMA_BASE_URL:-http://host.docker.internal:11434}"
+      LUMINARA_DATA_DIR: "/app/data"
+      JWT_SECRET: "${JWT_SECRET:-dev-change-jwt-secret-in-production}"
+      OLLAMA_BASE_URL: "${OLLAMA_BASE_URL:-http://ollama:11434}"
       OLLAMA_MODEL: "${OLLAMA_MODEL:-llama3}"
+    volumes:
+      - luminara_auth:/app/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
-
+#hosting frontend and uses 8080 as ports
   frontend:
     build:
       context: ./frontend
@@ -27,3 +35,16 @@ services:
       - "8080:80"
     depends_on:
       - backend
+#hosting ollama and uses 11434 as ports
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+#volumes for ollama data
+volumes:
+  ollama_data:
+  luminara_auth:

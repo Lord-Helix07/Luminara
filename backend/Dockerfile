@@ -16,6 +16,7 @@ COPY . .
 ENV HOST=0.0.0.0
 ENV PORT=5050
 ENV FLASK_DEBUG=0
+ENV LUMINARA_DATA_DIR=/app/data
 EXPOSE 5050
 
 CMD ["python", "server.py"]
