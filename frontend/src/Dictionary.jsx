@@ -9,6 +9,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTheme } from "./ThemeContext.jsx";
 import { useAuth } from "./AuthContext.jsx";
+import { Trash2 } from "lucide-react";
 
 export default function Dictionary() {
   const { t } = useTheme();
@@ -50,6 +51,10 @@ export default function Dictionary() {
     setPartOfSpeech("Noun");
     setDefinition("");
   };
+
+  const handleDeleteWord = (index) => {
+    setEntries(entries.filter((entry, i) => i !== index));
+  }
 
   return (
     <>
@@ -327,7 +332,8 @@ export default function Dictionary() {
                       boxShadow: "0 8px 24px rgba(0,0,0,0.04)",
                     }}
                   >
-                    <h4
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <h4
                       style={{
                         fontSize: "22px",
                         marginBottom: "6px",
@@ -336,7 +342,14 @@ export default function Dictionary() {
                       }}
                     >
                       {entry.word}
-                    </h4>
+                      </h4>
+
+                      <button type="button" onClick={() => handleDeleteWord(index)} 
+                        style={{background: "none", border: "none", cursor: "pointer", color: t.textMuted, padding: "4px"}}>
+                        <Trash2 size = {20} />
+                      </button>
+                    </div>
+                    
 
                     <p
                       style={{
