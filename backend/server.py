@@ -8,12 +8,13 @@ from auth_service import (
     login_user,
     create_token,
     verify_token_string,
+    JWT_EXP_SECONDS,
 )
 import tempfile, os, re, requests
 from threading import Thread
 
 app = Flask(__name__)
-CORS(app, allow_headers=["Content-Type", "Authorization"])
+CORS(app, allow_headers=["Content-Type", "Authorization"], supports_credentials=True, origins=["http://localhost:8080"])
 
 init_db()
 
@@ -167,10 +168,14 @@ Simple version:"""
 
 # sign in user from request
 def _auth_user_from_request():
-    auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Bearer "):
+    token = request.cookies.get("luminara_token")
+    if not token:
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            token = auth[7:].strip()
+    if not token:
         return None
-    return verify_token_string(auth[7:].strip())
+    return verify_token_string(token)
 
 
 @app.route("/auth/register", methods=["POST"])
@@ -182,7 +187,9 @@ def auth_register():
     if err:
         return jsonify({"error": err}), 400
     token = create_token(user["id"], user["email"])
-    return jsonify({"token": token, "user": {"email": user["email"], "id": user["id"]}})
+    resp = jsonify({"user": {"email": user["email"], "id": user["id"]}})
+    resp.set_cookie("luminara_token", token, httponly=True, samesite="Lax", max_age=JWT_EXP_SECONDS)
+    return resp
 
 
 @app.route("/auth/login", methods=["POST"])
@@ -194,7 +201,9 @@ def auth_login():
     if err:
         return jsonify({"error": err}), 401
     token = create_token(user["id"], user["email"])
-    return jsonify({"token": token, "user": {"email": user["email"], "id": user["id"]}})
+    resp = jsonify({"user": {"email": user["email"], "id": user["id"]}})
+    resp.set_cookie("luminara_token", token, httponly=True, samesite="Lax", max_age=JWT_EXP_SECONDS)
+    return resp
 
 
 @app.route("/auth/me", methods=["GET"])
@@ -203,6 +212,13 @@ def auth_me():
     if not u:
         return jsonify({"error": "Unauthorized"}), 401
     return jsonify({"user": {"email": u["email"], "id": u["id"]}})
+
+
+@app.route("/auth/logout", methods=["POST"])
+def auth_logout():
+    resp = jsonify({"ok": True})
+    resp.delete_cookie("luminara_token")
+    return resp
 
 
 @app.route("/warmup", methods=["GET", "POST"])
