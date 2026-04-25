@@ -9,7 +9,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTheme } from "./ThemeContext.jsx";
 import { useAuth } from "./AuthContext.jsx";
-import { Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 
 export default function Dictionary() {
   const { t } = useTheme();

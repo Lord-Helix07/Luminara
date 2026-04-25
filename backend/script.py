@@ -16,9 +16,20 @@ def read_pdf(path):
     full_text = ""
     try:
         with fitz.open(path) as pdf:
+            
+            # Blocks preserve original PDF paragraph format
             for page in pdf:
-                full_text += page.get_text().strip()
-        return full_text
+                blocks = page.get_text("blocks")
+                blocks.sort(key=lambda block: (block[1], block[0]))   # Sort blocks from top to bottom (y to x) with lambda function, default is left to right (x to y)
+                
+                for block in blocks:
+                    block_text = block[4].strip()   # Gets block text
+                    if not block_text:
+                        continue
+                    full_text += block_text + "\n\n"
+                    
+                
+        return full_text.strip()
     
     except Exception as e:
         print("Error opening or reading pdf: " + str(e))
