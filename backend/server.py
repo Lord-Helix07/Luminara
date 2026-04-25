@@ -50,6 +50,8 @@ def process_plain_text(text):
     if not isinstance(text, str):
         text = str(text)
 
+    # TODO (Ryan): Preserve paragraph breaks during normalization/collapsing whitespaces
+
     flags, triggered_sentences = flagCheck(text)
 
     to_rewrite = []
