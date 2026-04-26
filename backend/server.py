@@ -44,20 +44,64 @@ def warmup_ollama():
         return False, str(e)
 
 
+# Split headings from paragraph bodies
+def split_headings(text):
+    paragraphs = text.split("\n\n")
+    result = []
+    for paragraph in paragraphs:
+        lines = paragraph.split("\n")
+        first = lines[0].strip()
+        rest = "\n".join(lines[1:]).strip()
+
+        # If less than 10 characters and ends with no punctuation, most likely a heading
+        is_heading = len(first.split()) <= 7 and first and not first.endswith((".", "!", "?"))
+        if is_heading and rest:
+
+            # Add heading and body as their own seperate blocks
+            result.append(first)   
+            result.append(rest)
+        else:
+            result.append(paragraph)
+
+    return "\n\n".join(result)
+
+def is_structured_text(text):
+
+    text = text.strip()
+    return bool(
+        # If starts with number, letter, or ends with ":"
+        re.match(r"^\d+\.\s+", text) or    
+        re.match(r"^[A-Z]\.\s+", text) or  
+        text.endswith(":")                
+    )
+
 def process_plain_text(text):
     if text is None:
         text = ""
     if not isinstance(text, str):
         text = str(text)
 
-    # TODO (Ryan): Preserve paragraph breaks during normalization/collapsing whitespaces
+    # Preserve paragraph breaks during normalization/collapsing whitespaces
+    paragraphs = text.split("\n\n")
 
-    flags, triggered_sentences = flagCheck(text)
+    # Splits paragraph into lines, cleans extra spaces, joins them back together
+    normalized_paragraphs = []
+    for paragraph in paragraphs:
+        if not paragraph.strip():
+            continue
+        cleaned = "\n".join(" ".join(line.split()) for line in paragraph.split("\n"))
+        normalized_paragraphs.append(cleaned)
+        
+    normalized_text = "\n\n".join(normalized_paragraphs)  
+
+    split_text = split_headings(normalized_text)
+
+    flags, triggered_sentences = flagCheck(split_text)
 
     to_rewrite = []
     seen = set()
     for sentence in triggered_sentences:
-        if sentence in seen or len(sentence.split()) < 5 or sentence.startswith('•'):
+        if sentence in seen or len(sentence.split()) < 5 or sentence.startswith('•') or is_structured_text(sentence):
             continue
         seen.add(sentence)
         to_rewrite.append(sentence)
@@ -65,17 +109,14 @@ def process_plain_text(text):
     if OLLAMA_MAX_REWRITES > 0 and len(to_rewrite) > OLLAMA_MAX_REWRITES:
         to_rewrite = to_rewrite[:OLLAMA_MAX_REWRITES]
 
-    improved_text = text
+    improved_text = split_text
     batch_size = OLLAMA_REWRITE_BATCH_SIZE
     for i in range(0, len(to_rewrite), batch_size):
         batch = to_rewrite[i : i + batch_size]
         rewritten_list = rewrite_sentences_batch(batch)
         for sentence, rewritten in zip(batch, rewritten_list):
             if rewritten and rewritten != sentence:
-                normalized = ' '.join(sentence.split())
-                normalized_text = ' '.join(improved_text.split())
-                if normalized in normalized_text:
-                    improved_text = improved_text.replace(sentence, rewritten, 1)
+                improved_text = improved_text.replace(sentence, rewritten, 1)
 
     return {
         "text": improved_text,
