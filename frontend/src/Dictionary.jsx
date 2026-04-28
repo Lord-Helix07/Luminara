@@ -9,7 +9,9 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTheme } from "./ThemeContext.jsx";
 import { useAuth } from "./AuthContext.jsx";
-import { Pencil, Trash2 } from "lucide-react";
+import { apiFetch } from "./AuthContext.jsx";
+import { Trash2 } from "lucide-react";
+import { useEffect } from "react";
 
 export default function Dictionary() {
   const { t } = useTheme();
@@ -19,42 +21,87 @@ export default function Dictionary() {
   const [partOfSpeech, setPartOfSpeech] = useState("Noun");
   const [definition, setDefinition] = useState("");
 
-  const [entries, setEntries] = useState([
-    {
-      word: "Accessible",
-      partOfSpeech: "Adjective",
-      definition: "Easy to understand or use for a wide range of people.",
-    },
-    {
-      word: "Comprehend",
-      partOfSpeech: "Verb",
-      definition: "To understand something clearly.",
-    },
-  ]);
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const handleAddWord = (e) => {
+  useEffect(() => {
+    const loadEntries = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await apiFetch("/api/dictionary", { method: "GET" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError(data.error || "Could not load dictionary.");
+          return;
+        }
+        setEntries(Array.isArray(data.entries) ? data.entries : []);
+      } catch {
+        setError("Could not load dictionary.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (isAuthenticated) {
+      loadEntries();
+    } else {
+      setEntries([]);
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  const handleAddWord = async (e) => {
     e.preventDefault();
 
     if (!word.trim() || !definition.trim()) {
       alert("Please fill in the word and definition.");
       return;
     }
-
-    const newEntry = {
-      word: word.trim(),
-      partOfSpeech,
-      definition: definition.trim(),
-    };
-
-    setEntries([newEntry, ...entries]);
-    setWord("");
-    setPartOfSpeech("Noun");
-    setDefinition("");
+    setError("");
+    try {
+      const res = await apiFetch("/api/dictionary", {
+        method: "POST",
+        body: JSON.stringify({
+          word: word.trim(),
+          partOfSpeech,
+          definition: definition.trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "Could not add word.");
+        return;
+      }
+      if (data.entry) {
+        setEntries((prev) => [data.entry, ...prev]);
+      }
+      setWord("");
+      setPartOfSpeech("Noun");
+      setDefinition("");
+    } catch {
+      setError("Could not add word.");
+    }
   };
 
-  const handleDeleteWord = (index) => {
-    setEntries(entries.filter((entry, i) => i !== index));
-  }
+  const handleDeleteWord = async (entryId) => {
+    setError("");
+    try {
+      const res = await apiFetch("/api/dictionary", {
+        method: "DELETE",
+        body: JSON.stringify({ id: entryId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "Could not delete word.");
+        return;
+      }
+      setEntries((prev) => prev.filter((entry) => entry.id !== entryId));
+    } catch {
+      setError("Could not delete word.");
+    }
+  };
 
   return (
     <>
@@ -157,9 +204,7 @@ export default function Dictionary() {
                 lineHeight: 1.6,
               }}
             >
-              {isAuthenticated
-                ? "Add words that are confusing or difficult to understand. Luminara will help organize them into a clean personal dictionary."
-                : "You can still explore the dictionary page, but signing in will allow you to save and sync your words later."}
+              Add words that are confusing or difficult to understand. Each account has its own personal dictionary.
             </p>
           </div>
 
@@ -296,6 +341,19 @@ export default function Dictionary() {
             </div>
           </form>
 
+          {error ? (
+            <p
+              style={{
+                marginBottom: "18px",
+                color: t.error || "#b42318",
+                fontSize: "14px",
+              }}
+              role="alert"
+            >
+              {error}
+            </p>
+          ) : null}
+
           <section>
             <h3
               style={{
@@ -308,7 +366,19 @@ export default function Dictionary() {
             </h3>
 
             <div style={{ display: "grid", gap: "16px" }}>
-              {entries.length === 0 ? (
+              {loading ? (
+                <div
+                  style={{
+                    padding: "20px",
+                    borderRadius: "14px",
+                    border: `1px solid ${t.headerBorder}`,
+                    background: t.cardBg || "#fff",
+                    color: t.textMuted,
+                  }}
+                >
+                  Loading dictionary...
+                </div>
+              ) : entries.length === 0 ? (
                 <div
                   style={{
                     padding: "20px",
@@ -321,9 +391,9 @@ export default function Dictionary() {
                   No words added yet.
                 </div>
               ) : (
-                entries.map((entry, index) => (
+                entries.map((entry) => (
                   <div
-                    key={index}
+                    key={entry.id}
                     style={{
                       background: t.cardBg || "#fff",
                       border: `1px solid ${t.headerBorder}`,
@@ -344,7 +414,7 @@ export default function Dictionary() {
                       {entry.word}
                       </h4>
 
-                      <button type="button" onClick={() => handleDeleteWord(index)} 
+                      <button type="button" onClick={() => handleDeleteWord(entry.id)} 
                         style={{background: "none", border: "none", cursor: "pointer", color: t.textMuted, padding: "4px"}}>
                         <Trash2 size = {20} />
                       </button>

@@ -356,23 +356,97 @@ def convert():
 
 #TODO
 
-@app.route("/dictionary", methods=["GET"])
+@app.route("/api/dictionary", methods=["GET"])
 def get_dictionary():
     user = _auth_user_from_request()
     if not user:
         return jsonify({"error": "Unauthorized"}), 401
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, word, part_of_speech, definition
+            FROM dictionary
+            WHERE user_id = ?
+            ORDER BY id DESC
+            """,
+            (user["id"],),
+        )
+        rows = cur.fetchall()
+        items = [
+            {
+                "id": row["id"],
+                "word": row["word"],
+                "partOfSpeech": row["part_of_speech"] or "",
+                "definition": row["definition"] or "",
+            }
+            for row in rows
+        ]
+        return jsonify({"entries": items})
+    finally:
+        conn.close()
 
-@app.route("/dictionary", methods=["POST"])
+@app.route("/api/dictionary", methods=["POST"])
 def add_dictionary_word():
     user = _auth_user_from_request()
     if not user:
         return jsonify({"error": "Unauthorized"}), 401
+    data = request.get_json(silent=True) or {}
+    word = (data.get("word") or "").strip()
+    part_of_speech = (data.get("partOfSpeech") or "").strip()
+    definition = (data.get("definition") or "").strip()
 
-@app.route("/dictionary", methods=["DELETE"])
+    if not word or not definition:
+        return jsonify({"error": "Word and definition are required"}), 400
+
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO dictionary (user_id, word, part_of_speech, definition)
+            VALUES (?, ?, ?, ?)
+            """,
+            (user["id"], word, part_of_speech, definition),
+        )
+        conn.commit()
+        return jsonify(
+            {
+                "entry": {
+                    "id": cur.lastrowid,
+                    "word": word,
+                    "partOfSpeech": part_of_speech,
+                    "definition": definition,
+                }
+            }
+        ), 201
+    finally:
+        conn.close()
+
+@app.route("/api/dictionary", methods=["DELETE"])
 def delete_dictionary_word():
     user = _auth_user_from_request()
     if not user:
         return jsonify({"error": "Unauthorized"}), 401
+    data = request.get_json(silent=True) or {}
+    entry_id = data.get("id")
+    if entry_id is None:
+        return jsonify({"error": "Dictionary entry id is required"}), 400
+
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "DELETE FROM dictionary WHERE id = ? AND user_id = ?",
+            (entry_id, user["id"]),
+        )
+        conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({"error": "Entry not found"}), 404
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":
