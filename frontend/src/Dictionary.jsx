@@ -11,7 +11,6 @@ import { useTheme } from "./ThemeContext.jsx";
 import { useAuth } from "./AuthContext.jsx";
 import { apiFetch } from "./AuthContext.jsx";
 import { Trash2 } from "lucide-react";
-import { useEffect } from "react";
 
 export default function Dictionary() {
   const { t } = useTheme();
