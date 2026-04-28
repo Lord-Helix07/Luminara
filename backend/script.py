@@ -11,14 +11,30 @@ from PIL import Image
 
 import re
 
-def read_pdf(path):
+def read_pdf(path, start_page=None, end_page=None):
 
     full_text = ""
     try:
         with fitz.open(path) as pdf:
+            total_pages = len(pdf)
+            start_idx = 0
+            end_idx = total_pages - 1
+
+            if start_page is not None or end_page is not None:
+                if start_page is None or end_page is None:
+                    raise ValueError("Both start and end pages are required for a custom range.")
+                if start_page < 1 or end_page < 1:
+                    raise ValueError("Page numbers must be 1 or greater.")
+                if start_page > end_page:
+                    raise ValueError("Start page cannot be greater than end page.")
+                if end_page > total_pages:
+                    raise ValueError(f"This PDF has {total_pages} pages. End page exceeds that.")
+                start_idx = start_page - 1
+                end_idx = end_page - 1
             
             # Blocks preserve original PDF paragraph format
-            for page in pdf:
+            for page_num in range(start_idx, end_idx + 1):
+                page = pdf[page_num]
                 blocks = page.get_text("blocks")
                 blocks.sort(key=lambda block: (block[1], block[0]))   # Sort blocks from top to bottom (y to x) with lambda function, default is left to right (x to y)
                 
@@ -32,6 +48,8 @@ def read_pdf(path):
                 
         return full_text.strip()
     
+    except ValueError:
+        raise
     except Exception as e:
         print("Error opening or reading pdf: " + str(e))
         return None

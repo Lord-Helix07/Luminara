@@ -327,29 +327,57 @@ def convert():
         return jsonify({"error": "No file uploaded"}), 400
 
     file_extension = os.path.splitext(file.filename)[1].lower()
+    page_range = (request.form.get("pageRange") or "all").strip().lower()
+    start_page_raw = (request.form.get("startPage") or "").strip()
+    end_page_raw = (request.form.get("endPage") or "").strip()
+
+    start_page = None
+    end_page = None
+    if page_range == "custom":
+        if not start_page_raw or not end_page_raw:
+            return jsonify({"error": "Start and end pages are required for custom range"}), 400
+        try:
+            start_page = int(start_page_raw)
+            end_page = int(end_page_raw)
+        except ValueError:
+            return jsonify({"error": "Start and end pages must be valid numbers"}), 400
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension or ".bin") as tmp:
         file.save(tmp.name)
         path = tmp.name
 
-    if file_extension == ".pdf":
-        text = read_pdf(path)
-    elif file_extension == ".pptx":
-        text = read_pptx(path)
-    elif file_extension == ".docx":
-        text = read_docx(path)
-    elif file_extension in [".png", ".jpg", ".jpeg"]:
-        text = read_ocr_path(path)
-    elif file_extension in [".txt", ".text", ".md"]:
+    try:
+        if file_extension == ".pdf":
+            text = read_pdf(path, start_page=start_page, end_page=end_page)
+        elif file_extension == ".pptx":
+            if page_range == "custom":
+                return jsonify({"error": "Custom page range is currently supported for PDF files only"}), 400
+            text = read_pptx(path)
+        elif file_extension == ".docx":
+            if page_range == "custom":
+                return jsonify({"error": "Custom page range is currently supported for PDF files only"}), 400
+            text = read_docx(path)
+        elif file_extension in [".png", ".jpg", ".jpeg"]:
+            if page_range == "custom":
+                return jsonify({"error": "Custom page range is currently supported for PDF files only"}), 400
+            text = read_ocr_path(path)
+        elif file_extension in [".txt", ".text", ".md"]:
+            if page_range == "custom":
+                return jsonify({"error": "Custom page range is currently supported for PDF files only"}), 400
+            try:
+                with open(path, encoding="utf-8", errors="replace") as f:
+                    text = f.read()
+            except OSError:
+                text = None
+        else:
+            text = "Unsupported file type"
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    finally:
         try:
-            with open(path, encoding="utf-8", errors="replace") as f:
-                text = f.read()
+            os.remove(path)
         except OSError:
-            text = None
-    else:
-        text = "Unsupported file type"
-
-    os.remove(path)
+            pass
 
     return jsonify(process_plain_text(text))
 
