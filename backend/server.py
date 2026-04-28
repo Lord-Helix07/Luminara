@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from script import read_pdf, read_pptx, read_docx, read_ocr_path
 from text_analyzer import flagCheck
+
 from auth_service import (
     init_db,
     register_user,
@@ -9,6 +10,7 @@ from auth_service import (
     create_token,
     verify_token_string,
     JWT_EXP_SECONDS,
+    get_db
 )
 import tempfile, os, re, requests
 from threading import Thread
@@ -181,16 +183,23 @@ def _parse_numbered_rewrites(response_text, n):
 
 
 # asks ollama to rewrite sentences in simple English (batched to reduce latency on long docs)
-def rewrite_sentences_batch(sentences):
+def rewrite_sentences_batch(sentences, dictionary_words=None):
+
     if not sentences:
         return []
+    
     if len(sentences) == 1:
-        return [rewrite_sentence(sentences[0])]
+        return [rewrite_sentence(sentences[0]), dictionary_words]
+    
+    dictionary_hint = ""
+    if dictionary_words:
+
+        dictionary_hint = f"If the sentences contain any of these words: {', '.join(dictionary_words)}, replace each one with a random simpler synonym."
 
     n = len(sentences)
     block = "\n".join(f"{i + 1}. {s}" for i, s in enumerate(sentences))
     prompt = f"""Rewrite each numbered sentence in simple English. Use short words. Keep the same meaning. Do not add commentary.
-Output exactly {n} lines. Each line must start with its number, a period, a space, then the rewritten sentence only.
+Output exactly {n} lines. Each line must start with its number, a period, a space, then the rewritten sentence only. {dictionary_hint}
 Example format:
 1. First simplified sentence here.
 2. Second simplified sentence here.
@@ -214,11 +223,17 @@ Your answer ({n} numbered lines only):"""
 
 
 # asks ollama to rewrite a single sentence in simple English
-def rewrite_sentence(sentence):
-    prompt = f"""Rewrite this sentence in simple English. Use short words. Keep the same meaning. Do not add anything extra. Do not rewrite lists or bullet points. Return only the rewritten sentence.
+def rewrite_sentence(sentence, dictionary_words=None):  # dictionary_words defaults to None if not passed
+    dictionary_hint = ""
+    if dictionary_words:
+
+        dictionary_hint = f"If the sentence contains any of these words: {', '.join(dictionary_words)}, replace each one with a random simpler synonym."
+
+    prompt = f"""Rewrite this sentence in simple English. Use short words. Keep the same meaning. Do not add anything extra. Do not rewrite lists or bullet points. Return only the rewritten sentence. {dictionary_hint}
 
 Sentence: {sentence}
 Simple version:"""
+    
     try:
         out = _ollama_generate(prompt, num_predict=256, temperature=0.3)
         return out
@@ -337,6 +352,28 @@ def convert():
     os.remove(path)
 
     return jsonify(process_plain_text(text))
+
+
+#TODO
+
+@app.route("/dictionary", methods=["GET"])
+def get_dictionary():
+    user = _auth_user_from_request()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+
+@app.route("/dictionary", methods=["POST"])
+def add_dictionary_word():
+    user = _auth_user_from_request()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+
+@app.route("/dictionary", methods=["DELETE"])
+def delete_dictionary_word():
+    user = _auth_user_from_request()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+
 
 if __name__ == "__main__":
     # Warm model in background so first user request is faster.

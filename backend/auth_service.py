@@ -27,6 +27,10 @@ def _db_path() -> str:
     os.makedirs(data_dir, exist_ok=True)
     return os.path.join(data_dir, "luminara.db")
 
+def get_db():
+    conn = sqlite3.connect(_db_path())
+    conn.row_factory = sqlite3.Row  # Lets you access columns by name, ex: row["word"]
+    return conn
 
 def init_db() -> None:
     path = _db_path()
@@ -52,6 +56,18 @@ def init_db() -> None:
             )
             """
         )
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS dictionary (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                word TEXT NOT NULL,
+                part_of_speech TEXT,
+                definition TEXT,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """)
+
         conn.commit()
     finally:
         conn.close()
