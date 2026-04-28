@@ -26,6 +26,7 @@ def read_pdf(path):
                     block_text = block[4].strip()   # Gets block text
                     if not block_text:
                         continue
+
                     full_text += block_text + "\n\n"
                     
                 

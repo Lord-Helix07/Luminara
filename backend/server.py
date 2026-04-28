@@ -44,27 +44,6 @@ def warmup_ollama():
         return False, str(e)
 
 
-# Split headings from paragraph bodies
-def split_headings(text):
-    paragraphs = text.split("\n\n")
-    result = []
-    for paragraph in paragraphs:
-        lines = paragraph.split("\n")
-        first = lines[0].strip()
-        rest = "\n".join(lines[1:]).strip()
-
-        # If less than 10 characters and ends with no punctuation, most likely a heading
-        is_heading = len(first.split()) <= 7 and first and not first.endswith((".", "!", "?"))
-        if is_heading and rest:
-
-            # Add heading and body as their own seperate blocks
-            result.append(first)   
-            result.append(rest)
-        else:
-            result.append(paragraph)
-
-    return "\n\n".join(result)
-
 def is_structured_text(text):
 
     text = text.strip()
@@ -74,6 +53,44 @@ def is_structured_text(text):
         re.match(r"^[A-Z]\.\s+", text) or  
         text.endswith(":")                
     )
+
+# Detect if line is a heading
+def is_heading_line(first, body):
+    first = first.strip()
+    if not first:
+        return False
+    
+    # If less than 6 words, starts with upper case, and doesn't end with punctuation
+    is_short_title = (
+        len(first.split()) <= 6 and
+        first[0].isupper() and
+        not first.endswith((".", "!", "?", ";"))
+    )
+
+    is_numbered = bool(re.match(r"^\d+\.\s+[A-Z]", first))  # Starts with #. followed by a word that begins with uppercase
+    is_all_caps = bool(re.match(r"^[A-Z][A-Z\s]+:$", first))    # All caps, ends with colon
+    is_colon_title = bool(re.match(r"^[A-Z][A-Za-z\s\-]+:$", first))    # Begins with uppercase, ends with colon
+
+    return is_numbered or is_all_caps or is_colon_title or (is_short_title and len(body.split()) > 4)
+
+# Split headings from paragraph bodies
+def split_headings(text):
+    paragraphs = text.split("\n\n")
+    result = []
+    for paragraph in paragraphs:
+        lines = paragraph.split("\n")
+        first = lines[0].strip()
+        rest = "\n".join(lines[1:]).strip()
+
+        if is_heading_line(first, rest):
+
+            # Add heading and body as their own separate blocks
+            result.append(first)   
+            result.append(rest)
+        else:
+            result.append(paragraph)
+
+    return "\n\n".join(result)
 
 def process_plain_text(text):
     if text is None:
