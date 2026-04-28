@@ -94,11 +94,24 @@ def split_headings(text):
 
     return "\n\n".join(result)
 
-def process_plain_text(text):
+def process_plain_text(text, user=None):
     if text is None:
         text = ""
     if not isinstance(text, str):
         text = str(text)
+
+    dictionary_words = []
+
+    # Only gets dictionary words if user logged in
+    if user:
+        conn = get_db()
+        rows = conn.execute(
+            "SELECT id, word, part_of_speech, definition FROM dictionary WHERE user_id = ? ORDER BY id DESC",
+            (user["id"],)  # Comma required
+        ).fetchall() 
+        conn.close()
+
+        dictionary_words = [row["word"] for row in rows]
 
     # Preserve paragraph breaks during normalization/collapsing whitespaces
     paragraphs = text.split("\n\n")
@@ -132,7 +145,7 @@ def process_plain_text(text):
     batch_size = OLLAMA_REWRITE_BATCH_SIZE
     for i in range(0, len(to_rewrite), batch_size):
         batch = to_rewrite[i : i + batch_size]
-        rewritten_list = rewrite_sentences_batch(batch)
+        rewritten_list = rewrite_sentences_batch(batch, dictionary_words)
         for sentence, rewritten in zip(batch, rewritten_list):
             if rewritten and rewritten != sentence:
                 improved_text = improved_text.replace(sentence, rewritten, 1)
@@ -189,7 +202,7 @@ def rewrite_sentences_batch(sentences, dictionary_words=None):
         return []
     
     if len(sentences) == 1:
-        return [rewrite_sentence(sentences[0]), dictionary_words]
+        return [rewrite_sentence(sentences[0], dictionary_words)]
     
     dictionary_hint = ""
     if dictionary_words:
@@ -219,7 +232,7 @@ Your answer ({n} numbered lines only):"""
     except Exception as e:
         print(f"Ollama batch error: {e}")
 
-    return [rewrite_sentence(s) for s in sentences]
+    return [rewrite_sentence(s, dictionary_words) for s in sentences]
 
 
 # asks ollama to rewrite a single sentence in simple English
@@ -283,10 +296,10 @@ def auth_login():
 
 @app.route("/auth/me", methods=["GET"])
 def auth_me():
-    u = _auth_user_from_request()
-    if not u:
+    user = _auth_user_from_request()
+    if not user:
         return jsonify({"error": "Unauthorized"}), 401
-    return jsonify({"user": {"email": u["email"], "id": u["id"]}})
+    return jsonify({"user": {"email": user["email"], "id": user["id"]}})
 
 
 @app.route("/auth/logout", methods=["POST"])
@@ -305,22 +318,26 @@ def warmup():
 
 @app.route("/simplify", methods=["POST"])
 def simplify_text():
+    user = _auth_user_from_request()
+
     data = request.get_json(silent=True) or {}
     text = data.get("text")
     if text is None or (isinstance(text, str) and not text.strip()):
         return jsonify({"error": "No text provided"}), 400
-    return jsonify(process_plain_text(text))
+    return jsonify(process_plain_text(text, user))
 
 
 @app.route("/convert", methods=["POST"])
 def convert():
+    user = _auth_user_from_request()
+
     # Typed text / simplify: JSON body (works with nginx proxy on /convert only)
     data = request.get_json(silent=True)
     if isinstance(data, dict) and "text" in data:
         text = data.get("text")
         if text is None or (isinstance(text, str) and not text.strip()):
             return jsonify({"error": "No text provided"}), 400
-        return jsonify(process_plain_text(text))
+        return jsonify(process_plain_text(text, user))
 
     file = request.files.get("file")
     if not file:
@@ -351,28 +368,67 @@ def convert():
 
     os.remove(path)
 
-    return jsonify(process_plain_text(text))
+    return jsonify(process_plain_text(text, user))
 
-
-#TODO
-
+# Gets all dictionary entries for the user
 @app.route("/dictionary", methods=["GET"])
 def get_dictionary():
     user = _auth_user_from_request()
     if not user:
         return jsonify({"error": "Unauthorized"}), 401
+    
+    conn = get_db()
+
+    # From these 4 columns of the dictionary table, get rows belonging to the user. Order by newest entries 1st
+    rows = conn.execute(
+        "SELECT id, word, part_of_speech, definition FROM dictionary WHERE user_id = ? ORDER BY id DESC",
+        (user["id"],)
+    ).fetchall() 
+
+    conn.close()  
+    return jsonify({"entries": [dict(row) for row in rows]})    # Convert to a dictionary that JSON can handle
 
 @app.route("/dictionary", methods=["POST"])
 def add_dictionary_word():
     user = _auth_user_from_request()
     if not user:
         return jsonify({"error": "Unauthorized"}), 401
+    
+    data = request.get_json(silent=True) or {}  
 
-@app.route("/dictionary", methods=["DELETE"])
-def delete_dictionary_word():
+    word = data.get("word", "").strip()     # If word doesn't exist, return ""
+    part_of_speech = data.get("partOfSpeech", "")
+    definition = data.get("definition", "").strip()
+
+    if not word or not definition:
+        return jsonify({"error": "Word and definition required"}), 400
+    
+    conn = get_db()
+    new_row = conn.execute(
+        "INSERT INTO dictionary (user_id, word, part_of_speech, definition) VALUES (?, ?, ?, ?)",
+        (user["id"], word, part_of_speech, definition)
+    )
+
+    conn.commit()
+    conn.close()
+    return jsonify({"id": new_row.lastrowid, "word": word, "partOfSpeech": part_of_speech, "definition": definition})
+
+
+@app.route("/dictionary/<int:entry_id>", methods=["DELETE"])
+def delete_dictionary_word(entry_id):
     user = _auth_user_from_request()
     if not user:
         return jsonify({"error": "Unauthorized"}), 401
+    
+    conn = get_db()
+    
+    conn.execute(
+        "DELETE FROM dictionary WHERE id = ? AND user_id = ?",
+        (entry_id, user["id"])
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
 
 
 if __name__ == "__main__":

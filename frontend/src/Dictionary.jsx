@@ -5,7 +5,7 @@ Text on discord if you need help with the code or understanding what the page is
 Assigned to : Ryan + Vishal
   * will need to edit server.py as well
 */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useTheme } from "./ThemeContext.jsx";
 import { useAuth } from "./AuthContext.jsx";
@@ -13,7 +13,7 @@ import { Pencil, Trash2 } from "lucide-react";
 
 export default function Dictionary() {
   const { t } = useTheme();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, apiFetch } = useAuth();
 
   const [word, setWord] = useState("");
   const [partOfSpeech, setPartOfSpeech] = useState("Noun");
@@ -32,7 +32,16 @@ export default function Dictionary() {
     },
   ]);
 
-  const handleAddWord = (e) => {
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // Gets dictionary
+    apiFetch("/dictionary")
+      .then(res => res.json())  // Parse response as JSON
+      .then(data => setEntries(data.entries || []));  // Update state
+  }, [isAuthenticated]);
+
+  const handleAddWord = async (e) => {
     e.preventDefault();
 
     if (!word.trim() || !definition.trim()) {
@@ -46,13 +55,34 @@ export default function Dictionary() {
       definition: definition.trim(),
     };
 
-    setEntries([newEntry, ...entries]);
+    if (isAuthenticated) {
+      // Save new word to backend
+      const res = await apiFetch("/dictionary", {
+        method: "POST",
+        body: JSON.stringify(newEntry),
+      });
+
+      const data = await res.json();
+      setEntries([data, ...entries]);  
+    } else {
+      setEntries([newEntry, ...entries]);
+    }
+
     setWord("");
     setPartOfSpeech("Noun");
     setDefinition("");
   };
 
-  const handleDeleteWord = (index) => {
+  const handleDeleteWord = async (index) => {
+    const entry = entries[index]
+
+    if (isAuthenticated) {
+      // Not saved to variable, we don't use the response
+      await apiFetch(`/dictionary/${entry.id}`, {
+        method: "DELETE",
+      });
+    }
+
     setEntries(entries.filter((entry, i) => i !== index));
   }
 

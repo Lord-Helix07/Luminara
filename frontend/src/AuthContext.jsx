@@ -90,6 +90,7 @@ export function AuthProvider({ children }) {
       register,
       logout,
       reloadUser: loadMe,
+      apiFetch
     }),
     [user, ready, login, register, logout, loadMe]
   );
