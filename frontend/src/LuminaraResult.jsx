@@ -2,12 +2,18 @@
 This page is used to display the result of the simplified text, page 2 of luminara
 */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTheme, resultPalettes } from "./ThemeContext.jsx";
 import { SettingsMenu } from "./SettingsMenu.jsx";
 import { downloadConvertedText, formatLabel } from "./downloadUtils.js";
 import { useAuth } from "./AuthContext.jsx";
+
+function splitIntoSentences(value) {
+  if (!value || typeof value !== "string") return [];
+  const parts = value.match(/[^.!?\n]+[.!?]?|\n/g) || [];
+  return parts.map((s) => s.trim()).filter((s) => s.length > 0);
+}
 
 export default function LuminaraResult() {
   const navigate = useNavigate();
@@ -24,7 +30,11 @@ export default function LuminaraResult() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toast, setToast] = useState("");
+  const [hoveredSentenceIndex, setHoveredSentenceIndex] = useState(null);
+  const [activeSentenceIndex, setActiveSentenceIndex] = useState(null);
   const settingsRef = useRef(null);
+  const readAlongSessionRef = useRef(0);
+  const sentences = useMemo(() => splitIntoSentences(text), [text]);
 
   useEffect(() => {
     if (!settingsOpen) return;
@@ -36,6 +46,14 @@ export default function LuminaraResult() {
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [settingsOpen]);
+
+  useEffect(() => {
+    return () => {
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   const showToast = (msg) => {
     setToast(msg);
@@ -50,6 +68,83 @@ export default function LuminaraResult() {
       console.error(err);
       showToast("Download failed — try again");
     }
+  };
+
+  const speakSentence = (sentence, index, onEnd) => {
+    if (!("speechSynthesis" in window)) {
+      showToast("Speech is not supported in this browser");
+      return;
+    }
+    if (!sentence?.trim()) {
+      onEnd?.();
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(sentence);
+    utterance.onstart = () => {
+      setIsPlaying(true);
+      setActiveSentenceIndex(index);
+    };
+    utterance.onerror = () => {
+      setIsPlaying(false);
+      setActiveSentenceIndex(null);
+      showToast("Audio playback failed");
+    };
+    utterance.onend = () => {
+      onEnd?.();
+    };
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const playAllSentences = () => {
+    if (!("speechSynthesis" in window)) {
+      showToast("Speech is not supported in this browser");
+      return;
+    }
+    if (!sentences.length) {
+      showToast("No text to read");
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const sessionId = Date.now();
+    readAlongSessionRef.current = sessionId;
+
+    const speakNext = (index) => {
+      if (readAlongSessionRef.current !== sessionId) return;
+      if (index >= sentences.length) {
+        setIsPlaying(false);
+        setActiveSentenceIndex(null);
+        return;
+      }
+      speakSentence(sentences[index], index, () => speakNext(index + 1));
+    };
+
+    speakNext(0);
+  };
+
+  const stopPlayback = () => {
+    readAlongSessionRef.current += 1;
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsPlaying(false);
+    setActiveSentenceIndex(null);
+  };
+
+  const handlePlayPause = () => {
+    if (isPlaying) {
+      stopPlayback();
+      return;
+    }
+    playAllSentences();
+  };
+
+  const handleSentenceClick = (sentence, index) => {
+    stopPlayback();
+    speakSentence(sentence, index, () => {
+      setIsPlaying(false);
+      setActiveSentenceIndex(null);
+    });
   };
 
   return (
@@ -197,7 +292,7 @@ export default function LuminaraResult() {
           <span style={{ fontSize: "12px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: R.textMuted, whiteSpace: "nowrap" }}>🔊 Audio</span>
           <button
             type="button"
-            onClick={() => { setIsPlaying(!isPlaying); showToast("Audio playback — connect TTS backend to activate"); }}
+            onClick={handlePlayPause}
             style={{
               display: "flex", alignItems: "center", gap: "6px", background: "#6B8F6E", color: "#fff",
               border: "none", borderRadius: "6px", padding: "7px 14px", fontSize: "13px", fontWeight: "500",
@@ -239,7 +334,32 @@ export default function LuminaraResult() {
               display: "flex", flexDirection: "column", gap: "16px", fontSize: "15px", lineHeight: "1.8",
               color: R.text, whiteSpace: "pre-wrap",
             }}>
-              {text}
+              {sentences.map((sentence, index) => {
+                const isActive = activeSentenceIndex === index;
+                const isHovered = hoveredSentenceIndex === index;
+                return (
+                  <span
+                    key={`${index}-${sentence.slice(0, 18)}`}
+                    onMouseEnter={() => setHoveredSentenceIndex(index)}
+                    onMouseLeave={() => setHoveredSentenceIndex(null)}
+                    onClick={() => handleSentenceClick(sentence, index)}
+                    title="Click to read this sentence"
+                    style={{
+                      padding: "2px 4px",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      transition: "background-color 0.15s ease",
+                      background: isActive
+                        ? "rgba(107, 143, 110, 0.35)"
+                        : isHovered
+                          ? "rgba(107, 143, 110, 0.18)"
+                          : "transparent",
+                    }}
+                  >
+                    {sentence}{" "}
+                  </span>
+                );
+              })}
             </div>
           </div>
         </main>

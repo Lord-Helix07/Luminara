@@ -344,40 +344,93 @@ def convert():
         return jsonify({"error": "No file uploaded"}), 400
 
     file_extension = os.path.splitext(file.filename)[1].lower()
+    page_range = (request.form.get("pageRange") or "all").strip().lower()
+    start_page_raw = (request.form.get("startPage") or "").strip()
+    end_page_raw = (request.form.get("endPage") or "").strip()
+
+    start_page = None
+    end_page = None
+    if page_range == "custom":
+        if not start_page_raw or not end_page_raw:
+            return jsonify({"error": "Start and end pages are required for custom range"}), 400
+        try:
+            start_page = int(start_page_raw)
+            end_page = int(end_page_raw)
+        except ValueError:
+            return jsonify({"error": "Start and end pages must be valid numbers"}), 400
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension or ".bin") as tmp:
         file.save(tmp.name)
         path = tmp.name
 
-    if file_extension == ".pdf":
-        text = read_pdf(path)
-    elif file_extension == ".pptx":
-        text = read_pptx(path)
-    elif file_extension == ".docx":
-        text = read_docx(path)
-    elif file_extension in [".png", ".jpg", ".jpeg"]:
-        text = read_ocr_path(path)
-    elif file_extension in [".txt", ".text", ".md"]:
+    try:
+        if file_extension == ".pdf":
+            text = read_pdf(path, start_page=start_page, end_page=end_page)
+        elif file_extension == ".pptx":
+            if page_range == "custom":
+                return jsonify({"error": "Custom page range is currently supported for PDF files only"}), 400
+            text = read_pptx(path)
+        elif file_extension == ".docx":
+            if page_range == "custom":
+                return jsonify({"error": "Custom page range is currently supported for PDF files only"}), 400
+            text = read_docx(path)
+        elif file_extension in [".png", ".jpg", ".jpeg"]:
+            if page_range == "custom":
+                return jsonify({"error": "Custom page range is currently supported for PDF files only"}), 400
+            text = read_ocr_path(path)
+        elif file_extension in [".txt", ".text", ".md"]:
+            if page_range == "custom":
+                return jsonify({"error": "Custom page range is currently supported for PDF files only"}), 400
+            try:
+                with open(path, encoding="utf-8", errors="replace") as f:
+                    text = f.read()
+            except OSError:
+                text = None
+        else:
+            text = "Unsupported file type"
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    finally:
         try:
-            with open(path, encoding="utf-8", errors="replace") as f:
-                text = f.read()
+            os.remove(path)
         except OSError:
-            text = None
-    else:
-        text = "Unsupported file type"
-
-    os.remove(path)
+            pass
 
     return jsonify(process_plain_text(text, user))
 
 # Gets all dictionary entries for the user
-@app.route("/dictionary", methods=["GET"])
+@app.route("/api/dictionary", methods=["GET"])
 def get_dictionary():
     user = _auth_user_from_request()
     if not user:
         return jsonify({"error": "Unauthorized"}), 401
-    
     conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, word, part_of_speech, definition
+            FROM dictionary
+            WHERE user_id = ?
+            ORDER BY id DESC
+            """,
+            (user["id"],),
+        )
+        rows = cur.fetchall()
+        items = [
+            {
+                "id": row["id"],
+                "word": row["word"],
+                "partOfSpeech": row["part_of_speech"] or "",
+                "definition": row["definition"] or "",
+            }
+            for row in rows
+        ]
+        return jsonify({"entries": items})
+    finally:
+        conn.close()
+    
+    '''conn = get_db()
 
     # From these 4 columns of the dictionary table, get rows belonging to the user. Order by newest entries 1st
     rows = conn.execute(
@@ -386,15 +439,46 @@ def get_dictionary():
     ).fetchall() 
 
     conn.close()  
-    return jsonify({"entries": [dict(row) for row in rows]})    # Convert to a dictionary that JSON can handle
+    return jsonify({"entries": [dict(row) for row in rows]})    # Convert to a dictionary that JSON can handle'''
 
-@app.route("/dictionary", methods=["POST"])
+@app.route("/api/dictionary", methods=["POST"])
 def add_dictionary_word():
     user = _auth_user_from_request()
     if not user:
         return jsonify({"error": "Unauthorized"}), 401
+    data = request.get_json(silent=True) or {}
+    word = (data.get("word") or "").strip()
+    part_of_speech = (data.get("partOfSpeech") or "").strip()
+    definition = (data.get("definition") or "").strip()
+
+    if not word or not definition:
+        return jsonify({"error": "Word and definition are required"}), 400
+
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO dictionary (user_id, word, part_of_speech, definition)
+            VALUES (?, ?, ?, ?)
+            """,
+            (user["id"], word, part_of_speech, definition),
+        )
+        conn.commit()
+        return jsonify(
+            {
+                "entry": {
+                    "id": cur.lastrowid,
+                    "word": word,
+                    "partOfSpeech": part_of_speech,
+                    "definition": definition,
+                }
+            }
+        ), 201
+    finally:
+        conn.close()
     
-    data = request.get_json(silent=True) or {}  
+    '''data = request.get_json(silent=True) or {}  
 
     word = data.get("word", "").strip()     # If word doesn't exist, return ""
     part_of_speech = data.get("partOfSpeech", "")
@@ -411,16 +495,34 @@ def add_dictionary_word():
 
     conn.commit()
     conn.close()
-    return jsonify({"id": new_row.lastrowid, "word": word, "partOfSpeech": part_of_speech, "definition": definition})
+    return jsonify({"id": new_row.lastrowid, "word": word, "partOfSpeech": part_of_speech, "definition": definition})'''
 
 
-@app.route("/dictionary/<int:entry_id>", methods=["DELETE"])
+@app.route("/api/dictionary/<int:entry_id>", methods=["DELETE"])
 def delete_dictionary_word(entry_id):
     user = _auth_user_from_request()
     if not user:
         return jsonify({"error": "Unauthorized"}), 401
-    
+    data = request.get_json(silent=True) or {}
+    entry_id = data.get("id")
+    if entry_id is None:
+        return jsonify({"error": "Dictionary entry id is required"}), 400
+
     conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "DELETE FROM dictionary WHERE id = ? AND user_id = ?",
+            (entry_id, user["id"]),
+        )
+        conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({"error": "Entry not found"}), 404
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
+    
+    '''conn = get_db()
     
     conn.execute(
         "DELETE FROM dictionary WHERE id = ? AND user_id = ?",
@@ -428,7 +530,7 @@ def delete_dictionary_word(entry_id):
     )
     conn.commit()
     conn.close()
-    return jsonify({"success": True})
+    return jsonify({"success": True})'''
 
 
 if __name__ == "__main__":
