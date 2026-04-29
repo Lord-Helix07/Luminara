@@ -33,6 +33,7 @@ export default function LuminaraHomepage() {
   const [format, setFormat] = useState("");
   const [language, setLanguage] = useState("en");
   const [pageRange, setPageRange] = useState("all");
+  const [customPageMode, setCustomPageMode] = useState("single");
   const [startPage, setStartPage] = useState("");
   const [endPage, setEndPage] = useState("");
 
@@ -88,17 +89,19 @@ export default function LuminaraHomepage() {
       const start = parseInt(String(startPage).trim(), 10);
       const end = parseInt(String(endPage).trim(), 10);
 
-      if (!startPage || !endPage || Number.isNaN(start) || Number.isNaN(end)) {
+      if (!startPage || Number.isNaN(start)) {
         return false;
       }
 
-      if (start < 1 || end < 1 || start > end) {
+      if (customPageMode === "single") {
+        if (start < 1) return false;
+      } else if (!endPage || Number.isNaN(end) || start < 1 || end < 1 || start > end) {
         return false;
       }
     }
 
     return true;
-  }, [simplify, manualText, format, file, language, pageRange, startPage, endPage]);
+  }, [simplify, manualText, format, file, language, pageRange, customPageMode, startPage, endPage]);
 
   const validationMessage = () => {
     const missing = [];
@@ -116,9 +119,13 @@ export default function LuminaraHomepage() {
       const start = parseInt(String(startPage).trim(), 10);
       const end = parseInt(String(endPage).trim(), 10);
 
-      if (!startPage || !endPage || Number.isNaN(start) || Number.isNaN(end)) {
-        missing.push("enter start and end page numbers");
-      } else if (start < 1 || end < 1 || start > end) {
+      if (!startPage || Number.isNaN(start) || start < 1) {
+        missing.push(
+          customPageMode === "single"
+            ? "enter a valid page number"
+            : "enter a valid start page number"
+        );
+      } else if (customPageMode === "range" && (!endPage || Number.isNaN(end) || end < 1 || start > end)) {
         missing.push("enter valid page numbers (start ≤ end, both ≥ 1)");
       }
     }
@@ -162,6 +169,7 @@ export default function LuminaraHomepage() {
     setFormat("");
     setLanguage("en");
     setPageRange("all");
+    setCustomPageMode("single");
     setStartPage("");
     setEndPage("");
     setTts(false);
@@ -209,6 +217,13 @@ export default function LuminaraHomepage() {
           }),
         });
       } else {
+        const normalizedStartPage = pageRange === "custom" ? startPage : "";
+        const normalizedEndPage =
+          pageRange === "custom"
+            ? customPageMode === "single"
+              ? startPage
+              : endPage
+            : "";
         const formData = new FormData();
         formData.append("file", file);
         formData.append("language", language);
@@ -217,8 +232,8 @@ export default function LuminaraHomepage() {
         formData.append("voice", voice);
         formData.append("speed", String(speed));
         formData.append("pageRange", pageRange);
-        formData.append("startPage", startPage);
-        formData.append("endPage", endPage);
+        formData.append("startPage", normalizedStartPage);
+        formData.append("endPage", normalizedEndPage);
 
         response = await fetch(`${API_BASE_URL}/convert`, {
           method: "POST",
@@ -779,18 +794,60 @@ export default function LuminaraHomepage() {
                   {pageRange === "custom" && (
                     <div
                       style={{
-                        display: "flex",
-                        alignItems: "center",
+                        display: "grid",
                         gap: "8px",
                         marginTop: "4px",
                       }}
                     >
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCustomPageMode("single");
+                            setEndPage("");
+                          }}
+                          style={{
+                            flex: 1,
+                            padding: "7px 10px",
+                            borderRadius: "8px",
+                            border: customPageMode === "single" ? `2px solid ${t.radioOn}` : `1px solid ${t.selectBorder}`,
+                            background: customPageMode === "single" ? t.dropBgHi : t.inputBg,
+                            color: t.text,
+                            fontSize: "12px",
+                            fontWeight: "600",
+                            cursor: "pointer",
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}
+                        >
+                          One page
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCustomPageMode("range")}
+                          style={{
+                            flex: 1,
+                            padding: "7px 10px",
+                            borderRadius: "8px",
+                            border: customPageMode === "range" ? `2px solid ${t.radioOn}` : `1px solid ${t.selectBorder}`,
+                            background: customPageMode === "range" ? t.dropBgHi : t.inputBg,
+                            color: t.text,
+                            fontSize: "12px",
+                            fontWeight: "600",
+                            cursor: "pointer",
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}
+                        >
+                          Range
+                        </button>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                       <input
                         type="number"
                         min="1"
                         value={startPage}
                         onChange={(e) => setStartPage(e.target.value)}
-                        placeholder="Start"
+                        placeholder={customPageMode === "single" ? "Page" : "Start"}
                         style={{
                           width: "60px",
                           padding: "5px 8px",
@@ -804,26 +861,33 @@ export default function LuminaraHomepage() {
                         }}
                       />
 
-                      <span style={{ fontSize: "13px", color: t.textSoft }}>to</span>
+                      {customPageMode === "range" ? (
+                        <>
+                          <span style={{ fontSize: "13px", color: t.textSoft }}>to</span>
 
-                      <input
-                        type="number"
-                        min="1"
-                        value={endPage}
-                        onChange={(e) => setEndPage(e.target.value)}
-                        placeholder="End"
-                        style={{
-                          width: "60px",
-                          padding: "5px 8px",
-                          borderRadius: "6px",
-                          border: `1px solid ${t.selectBorder}`,
-                          fontSize: "13px",
-                          color: t.inputFg,
-                          fontFamily: "'DM Sans', sans-serif",
-                          textAlign: "center",
-                          background: t.inputBg,
-                        }}
-                      />
+                          <input
+                            type="number"
+                            min="1"
+                            value={endPage}
+                            onChange={(e) => setEndPage(e.target.value)}
+                            placeholder="End"
+                            style={{
+                              width: "60px",
+                              padding: "5px 8px",
+                              borderRadius: "6px",
+                              border: `1px solid ${t.selectBorder}`,
+                              fontSize: "13px",
+                              color: t.inputFg,
+                              fontFamily: "'DM Sans', sans-serif",
+                              textAlign: "center",
+                              background: t.inputBg,
+                            }}
+                          />
+                        </>
+                      ) : (
+                        <span style={{ fontSize: "12px", color: t.textSoft }}>single-page extraction</span>
+                      )}
+                      </div>
                     </div>
                   )}
                 </div>

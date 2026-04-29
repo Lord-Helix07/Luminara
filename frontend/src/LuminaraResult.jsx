@@ -3,16 +3,53 @@ This page is used to display the result of the simplified text, page 2 of lumina
 */
 
 import { useState, useEffect, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTheme, resultPalettes } from "./ThemeContext.jsx";
 import { SettingsMenu } from "./SettingsMenu.jsx";
 import { downloadConvertedText, formatLabel } from "./downloadUtils.js";
-import { useAuth } from "./AuthContext.jsx";
+import { useAuth, apiFetch } from "./AuthContext.jsx";
 
-function splitIntoSentences(value) {
-  if (!value || typeof value !== "string") return [];
-  const parts = value.match(/[^.!?\n]+[.!?]?|\n/g) || [];
-  return parts.map((s) => s.trim()).filter((s) => s.length > 0);
+const MAX_SELECTION_CHARS = 96;
+
+function rangeViewportRect(range) {
+  let rect = range.getBoundingClientRect();
+  if (rect.width > 0 || rect.height > 0) return rect;
+  const rects = range.getClientRects();
+  if (rects.length > 0) return rects[0];
+  return rect;
+}
+
+function parseTextForReadAlong(value) {
+  const text = typeof value === "string" ? value : String(value ?? "");
+  const blocks = text
+    .split(/\n\s*\n/)
+    .map((block) => block.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+
+  const sentences = [];
+  const paragraphs = [];
+
+  for (const block of blocks) {
+    const parts = block.match(/[^.!?]+[.!?]+(?:["')\]]+)?|[^.!?]+$/g) || [];
+    const paragraphSentenceIndexes = [];
+    for (const part of parts) {
+      const sentence = part.trim();
+      if (!sentence) continue;
+      paragraphSentenceIndexes.push(sentences.length);
+      sentences.push(sentence);
+    }
+    if (paragraphSentenceIndexes.length > 0) {
+      paragraphs.push(paragraphSentenceIndexes);
+    }
+  }
+
+  if (paragraphs.length === 0 && text.trim()) {
+    paragraphs.push([0]);
+    sentences.push(text.replace(/\s+/g, " ").trim());
+  }
+
+  return { sentences, paragraphs };
 }
 
 export default function LuminaraResult() {
@@ -32,9 +69,19 @@ export default function LuminaraResult() {
   const [toast, setToast] = useState("");
   const [hoveredSentenceIndex, setHoveredSentenceIndex] = useState(null);
   const [activeSentenceIndex, setActiveSentenceIndex] = useState(null);
+  /** { text, top, left } in viewport px for fixed toolbar — only when signed in */
+  const [selectionToolbar, setSelectionToolbar] = useState(null);
+  const [dictDrawerOpen, setDictDrawerOpen] = useState(false);
+  const [dictWord, setDictWord] = useState("");
+  const [dictPartOfSpeech, setDictPartOfSpeech] = useState("Noun");
+  const [dictDefinition, setDictDefinition] = useState("");
+  const [dictSaving, setDictSaving] = useState(false);
   const settingsRef = useRef(null);
+  const resultTextRef = useRef(null);
   const readAlongSessionRef = useRef(0);
-  const sentences = useMemo(() => splitIntoSentences(text), [text]);
+  const readAlongText = useMemo(() => parseTextForReadAlong(text), [text]);
+  const sentences = readAlongText.sentences;
+  const paragraphs = readAlongText.paragraphs;
 
   useEffect(() => {
     if (!settingsOpen) return;
@@ -54,6 +101,81 @@ export default function LuminaraResult() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setSelectionToolbar(null);
+      return;
+    }
+
+    const updateSelectionToolbar = () => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const sel = window.getSelection();
+          if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
+            setSelectionToolbar(null);
+            return;
+          }
+          const root = resultTextRef.current;
+          if (!root) return;
+          const inRoot = (node) => {
+            if (!node) return false;
+            const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+            return el ? root.contains(el) : false;
+          };
+          if (!inRoot(sel.anchorNode) || !inRoot(sel.focusNode)) {
+            setSelectionToolbar(null);
+            return;
+          }
+          const raw = sel.toString().replace(/\s+/g, " ").trim();
+          if (!raw || raw.length > MAX_SELECTION_CHARS) {
+            setSelectionToolbar(null);
+            return;
+          }
+          const range = sel.getRangeAt(0);
+          const rect = rangeViewportRect(range);
+          if (rect.width === 0 && rect.height === 0) {
+            setSelectionToolbar(null);
+            return;
+          }
+          setSelectionToolbar({
+            text: raw,
+            top: rect.bottom + 8,
+            left: rect.left + rect.width / 2,
+          });
+        });
+      });
+    };
+
+    const hideToolbar = () => setSelectionToolbar(null);
+
+    const onDocMouseDown = (e) => {
+      if (e.target?.closest?.("[data-dictionary-selection-toolbar]")) return;
+      setSelectionToolbar(null);
+    };
+
+    document.addEventListener("mouseup", updateSelectionToolbar);
+    window.addEventListener("scroll", hideToolbar, true);
+    document.addEventListener("mousedown", onDocMouseDown, true);
+
+    return () => {
+      document.removeEventListener("mouseup", updateSelectionToolbar);
+      window.removeEventListener("scroll", hideToolbar, true);
+      document.removeEventListener("mousedown", onDocMouseDown, true);
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!dictDrawerOpen) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        setDictDrawerOpen(false);
+        setDictSaving(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [dictDrawerOpen]);
 
   const showToast = (msg) => {
     setToast(msg);
@@ -140,11 +262,60 @@ export default function LuminaraResult() {
   };
 
   const handleSentenceClick = (sentence, index) => {
+    const picked = window.getSelection()?.toString()?.trim();
+    if (picked) return;
     stopPlayback();
     speakSentence(sentence, index, () => {
       setIsPlaying(false);
       setActiveSentenceIndex(null);
     });
+  };
+
+  const openDictionaryDrawer = () => {
+    if (!selectionToolbar?.text) return;
+    setDictWord(selectionToolbar.text);
+    setDictPartOfSpeech("Noun");
+    setDictDefinition("");
+    setDictDrawerOpen(true);
+    setSelectionToolbar(null);
+    window.getSelection()?.removeAllRanges();
+  };
+
+  const closeDictionaryDrawer = () => {
+    setDictDrawerOpen(false);
+    setDictSaving(false);
+  };
+
+  const submitDictionaryEntry = async (e) => {
+    e.preventDefault();
+    const word = dictWord.trim();
+    const definition = dictDefinition.trim();
+    if (!word || !definition) {
+      showToast("Word and definition are required");
+      return;
+    }
+    setDictSaving(true);
+    try {
+      const res = await apiFetch("/api/dictionary", {
+        method: "POST",
+        body: JSON.stringify({
+          word,
+          partOfSpeech: dictPartOfSpeech,
+          definition,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(data.error || "Could not save");
+        return;
+      }
+      showToast(`Added “${word}” to dictionary`);
+      closeDictionaryDrawer();
+    } catch {
+      showToast("Could not save");
+    } finally {
+      setDictSaving(false);
+    }
   };
 
   return (
@@ -330,36 +501,43 @@ export default function LuminaraResult() {
           }}>
             <div style={{ fontSize: "22px", fontWeight: "600", marginBottom: "6px", color: R.text }}>Converted Text</div>
             <div style={{ fontSize: "14px", color: R.textMuted, marginBottom: "28px" }}>Here is your extracted content</div>
-            <div style={{
-              display: "flex", flexDirection: "column", gap: "16px", fontSize: "15px", lineHeight: "1.8",
-              color: R.text, whiteSpace: "pre-wrap",
-            }}>
-              {sentences.map((sentence, index) => {
-                const isActive = activeSentenceIndex === index;
-                const isHovered = hoveredSentenceIndex === index;
-                return (
-                  <span
-                    key={`${index}-${sentence.slice(0, 18)}`}
-                    onMouseEnter={() => setHoveredSentenceIndex(index)}
-                    onMouseLeave={() => setHoveredSentenceIndex(null)}
-                    onClick={() => handleSentenceClick(sentence, index)}
-                    title="Click to read this sentence"
-                    style={{
-                      padding: "2px 4px",
-                      borderRadius: "6px",
-                      cursor: "pointer",
-                      transition: "background-color 0.15s ease",
-                      background: isActive
-                        ? "rgba(107, 143, 110, 0.35)"
-                        : isHovered
-                          ? "rgba(107, 143, 110, 0.18)"
-                          : "transparent",
-                    }}
-                  >
-                    {sentence}{" "}
-                  </span>
-                );
-              })}
+            <div ref={resultTextRef} style={{ fontSize: "15px", lineHeight: "1.8", color: R.text, userSelect: "text" }}>
+              {paragraphs.map((sentenceIndexes, paragraphIndex) => (
+                <p
+                  key={`p-${paragraphIndex}`}
+                  style={{ margin: 0, marginBottom: paragraphIndex === paragraphs.length - 1 ? 0 : "14px" }}
+                >
+                  {sentenceIndexes.map((sentenceIndex, i) => {
+                    const sentence = sentences[sentenceIndex];
+                    const isActive = activeSentenceIndex === sentenceIndex;
+                    const isHovered = hoveredSentenceIndex === sentenceIndex;
+                    return (
+                      <span key={`s-${sentenceIndex}`}>
+                        <span
+                          onMouseEnter={() => setHoveredSentenceIndex(sentenceIndex)}
+                          onMouseLeave={() => setHoveredSentenceIndex(null)}
+                          onClick={() => handleSentenceClick(sentence, sentenceIndex)}
+                          title="Click to read this sentence"
+                          style={{
+                            padding: "2px 4px",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            transition: "background-color 0.15s ease",
+                            background: isActive
+                              ? "rgba(107, 143, 110, 0.35)"
+                              : isHovered
+                                ? "rgba(107, 143, 110, 0.18)"
+                                : "transparent",
+                          }}
+                        >
+                          {sentence}
+                        </span>
+                        {i < sentenceIndexes.length - 1 ? " " : ""}
+                      </span>
+                    );
+                  })}
+                </p>
+              ))}
             </div>
           </div>
         </main>
@@ -402,6 +580,220 @@ export default function LuminaraResult() {
             Download File
           </button>
         </div>
+
+        {user &&
+          selectionToolbar &&
+          typeof document !== "undefined" &&
+          createPortal(
+            <div
+              data-dictionary-selection-toolbar
+              style={{
+                position: "fixed",
+                top: selectionToolbar.top,
+                left: selectionToolbar.left,
+                transform: "translate(-50%, 0)",
+                zIndex: 10050,
+                boxShadow: R.shadow,
+                pointerEvents: "auto",
+              }}
+            >
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={openDictionaryDrawer}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "8px 14px",
+                  borderRadius: "10px",
+                  border: `1px solid ${R.border}`,
+                  background: R.cardBg,
+                  color: R.text,
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  fontFamily: "'DM Sans', sans-serif",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                  <path d="M8 7h8M8 11h6" />
+                </svg>
+                Add to dictionary
+              </button>
+            </div>,
+            document.body
+          )}
+
+        {dictDrawerOpen && (
+          <>
+            <button
+              type="button"
+              aria-label="Close dictionary panel"
+              onClick={closeDictionaryDrawer}
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 500,
+                border: "none",
+                background: "rgba(0,0,0,0.35)",
+                cursor: "pointer",
+              }}
+            />
+            <aside
+              role="dialog"
+              aria-labelledby="dict-drawer-title"
+              style={{
+                position: "fixed",
+                top: 0,
+                right: 0,
+                bottom: 0,
+                width: "min(400px, 100vw)",
+                zIndex: 501,
+                background: R.cardBg,
+                borderLeft: `1px solid ${R.border}`,
+                boxShadow: "-8px 0 24px rgba(0,0,0,0.12)",
+                padding: "24px",
+                display: "flex",
+                flexDirection: "column",
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                <h2 id="dict-drawer-title" style={{ fontSize: "18px", fontWeight: "600", color: R.text }}>
+                  Add to dictionary
+                </h2>
+                <button
+                  type="button"
+                  onClick={closeDictionaryDrawer}
+                  aria-label="Close"
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: R.textMuted,
+                    cursor: "pointer",
+                    padding: "4px",
+                    fontSize: "22px",
+                    lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+              <form onSubmit={submitDictionaryEntry} style={{ display: "flex", flexDirection: "column", gap: "16px", flex: 1 }}>
+                <div>
+                  <label htmlFor="dict-word" style={{ display: "block", fontSize: "13px", fontWeight: "500", marginBottom: "6px", color: R.text }}>
+                    Word or phrase
+                  </label>
+                  <input
+                    id="dict-word"
+                    type="text"
+                    value={dictWord}
+                    onChange={(e) => setDictWord(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: "8px",
+                      border: `1px solid ${R.border}`,
+                      background: darkMode ? "#252520" : "#fff",
+                      color: R.text,
+                      fontSize: "14px",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="dict-pos" style={{ display: "block", fontSize: "13px", fontWeight: "500", marginBottom: "6px", color: R.text }}>
+                    Part of speech
+                  </label>
+                  <select
+                    id="dict-pos"
+                    value={dictPartOfSpeech}
+                    onChange={(e) => setDictPartOfSpeech(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: "8px",
+                      border: `1px solid ${R.border}`,
+                      background: darkMode ? "#252520" : "#fff",
+                      color: R.text,
+                      fontSize: "14px",
+                    }}
+                  >
+                    <option>Noun</option>
+                    <option>Verb</option>
+                    <option>Adjective</option>
+                    <option>Adverb</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+                  <label htmlFor="dict-def" style={{ display: "block", fontSize: "13px", fontWeight: "500", marginBottom: "6px", color: R.text }}>
+                    Definition
+                  </label>
+                  <textarea
+                    id="dict-def"
+                    value={dictDefinition}
+                    onChange={(e) => setDictDefinition(e.target.value)}
+                    rows={5}
+                    placeholder="What does this mean in simple terms?"
+                    style={{
+                      width: "100%",
+                      flex: 1,
+                      minHeight: "120px",
+                      padding: "10px 12px",
+                      borderRadius: "8px",
+                      border: `1px solid ${R.border}`,
+                      background: darkMode ? "#252520" : "#fff",
+                      color: R.text,
+                      fontSize: "14px",
+                      resize: "vertical",
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  />
+                </div>
+                <div style={{ display: "flex", gap: "10px", marginTop: "auto", paddingTop: "12px" }}>
+                  <button
+                    type="button"
+                    onClick={closeDictionaryDrawer}
+                    style={{
+                      flex: 1,
+                      padding: "12px",
+                      borderRadius: "8px",
+                      border: `1px solid ${R.border}`,
+                      background: "transparent",
+                      color: R.text,
+                      fontSize: "14px",
+                      fontWeight: "500",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={dictSaving}
+                    style={{
+                      flex: 1,
+                      padding: "12px",
+                      borderRadius: "8px",
+                      border: "none",
+                      background: dictSaving ? "#9aaa9c" : "#6B8F6E",
+                      color: "#fff",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      cursor: dictSaving ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {dictSaving ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              </form>
+            </aside>
+          </>
+        )}
 
         {toast && (
           <div style={{

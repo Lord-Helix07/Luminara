@@ -113,15 +113,17 @@ def process_plain_text(text, user=None):
 
         dictionary_words = [row["word"] for row in rows]
 
-    # Preserve paragraph breaks during normalization/collapsing whitespaces
-    paragraphs = text.split("\n\n")
+    # Preserve paragraph boundaries while flattening hard-wrapped lines.
+    paragraphs = re.split(r"\n\s*\n", text)
 
-    # Splits paragraph into lines, cleans extra spaces, joins them back together
+    # Split each paragraph into lines, normalize whitespace, then merge lines
+    # back into one sentence flow so PDF hard wraps do not remain in output.
     normalized_paragraphs = []
     for paragraph in paragraphs:
         if not paragraph.strip():
             continue
-        cleaned = "\n".join(" ".join(line.split()) for line in paragraph.split("\n"))
+        lines = [" ".join(line.split()) for line in paragraph.splitlines() if line.strip()]
+        cleaned = " ".join(lines).strip()
         normalized_paragraphs.append(cleaned)
         
     normalized_text = "\n\n".join(normalized_paragraphs)  
@@ -149,6 +151,15 @@ def process_plain_text(text, user=None):
         for sentence, rewritten in zip(batch, rewritten_list):
             if rewritten and rewritten != sentence:
                 improved_text = improved_text.replace(sentence, rewritten, 1)
+
+    # Clean common punctuation artifacts from OCR/LLM rewrites without
+    # changing normal sentence punctuation.
+    improved_text = re.sub(r"(?m)^\s*\.\s*$", "", improved_text)  # lines that are just '.'
+    improved_text = re.sub(r"\s+\.\s+", ". ", improved_text)      # stray spaced dots in prose
+    improved_text = re.sub(r"\.\s*\.\s*", ". ", improved_text)    # duplicate periods from fragments
+    improved_text = re.sub(r"\s+([,;:!?])", r"\1", improved_text) # remove spaces before punctuation
+    improved_text = re.sub(r"[ \t]{2,}", " ", improved_text)
+    improved_text = re.sub(r"\n{3,}", "\n\n", improved_text).strip()
 
     return {
         "text": improved_text,
@@ -351,13 +362,13 @@ def convert():
     start_page = None
     end_page = None
     if page_range == "custom":
-        if not start_page_raw or not end_page_raw:
-            return jsonify({"error": "Start and end pages are required for custom range"}), 400
+        if not start_page_raw:
+            return jsonify({"error": "Start page is required for custom range"}), 400
         try:
             start_page = int(start_page_raw)
-            end_page = int(end_page_raw)
+            end_page = int(end_page_raw) if end_page_raw else start_page
         except ValueError:
-            return jsonify({"error": "Start and end pages must be valid numbers"}), 400
+            return jsonify({"error": "Start/end pages must be valid numbers"}), 400
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension or ".bin") as tmp:
         file.save(tmp.name)
