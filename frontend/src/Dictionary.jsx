@@ -9,7 +9,6 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useTheme } from "./ThemeContext.jsx";
 import { useAuth } from "./AuthContext.jsx";
-import { apiFetch } from "./AuthContext.jsx";
 import { Trash2 } from "lucide-react";
 
 export default function Dictionary() {
@@ -51,13 +50,13 @@ export default function Dictionary() {
       }
     };
 
-    if (isAuthenticated) {
-      loadEntries();
-    } else {
+    if (!isAuthenticated) {
       setEntries([]);
       setLoading(false);
+      return;
     }
-  }, [isAuthenticated]);
+    loadEntries();
+  }, [isAuthenticated, apiFetch]);
 
   const handleAddWord = async (e) => {
     e.preventDefault();
@@ -77,14 +76,16 @@ export default function Dictionary() {
     try {
       const res = await apiFetch("/api/dictionary", {
         method: "POST",
-        body: JSON.stringify({
-          newEntry
-        }),
+        body: JSON.stringify(newEntry),
       });
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error || "Could not add word.");
+        if (res.status === 401) {
+          setError("You are signed out. Please sign in again.");
+        } else {
+          setError(data.error || "Could not add word.");
+        }
         return;
       }
       if (data.entry) {
@@ -149,6 +150,30 @@ export default function Dictionary() {
 
   return (
     <>
+      {!isAuthenticated ? (
+        <div
+          style={{
+            minHeight: "100vh",
+            width: "100vw",
+            background: t.bg,
+            color: t.text,
+            display: "grid",
+            placeItems: "center",
+            fontFamily: "'DM Sans', sans-serif",
+            padding: "24px",
+          }}
+        >
+          <div style={{ textAlign: "center" }}>
+            <h2 style={{ marginBottom: "10px", fontFamily: "'Playfair Display', serif" }}>
+              Please sign in to use Dictionary
+            </h2>
+            <Link to="/signin" style={{ color: t.brand, textDecoration: "none", fontWeight: 600 }}>
+              Go to Sign In
+            </Link>
+          </div>
+        </div>
+      ) : (
+      <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -492,6 +517,8 @@ export default function Dictionary() {
           </section>
         </main>
       </div>
+      </>
+      )}
     </>
   );
 }

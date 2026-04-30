@@ -23,8 +23,10 @@ export function AuthProvider({ children }) {
   const [ready, setReady] = useState(false);
 
   const loadMe = useCallback(async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
     try {
-      const res = await apiFetch("/auth/me", { method: "GET" });
+      const res = await apiFetch("/auth/me", { method: "GET", signal: controller.signal });
       if (!res.ok) {
         setUser(null);
         setReady(true);
@@ -35,6 +37,7 @@ export function AuthProvider({ children }) {
     } catch {
       setUser(null);
     } finally {
+      clearTimeout(timeoutId);
       setReady(true);
     }
   }, []);
