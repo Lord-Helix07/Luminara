@@ -7,7 +7,18 @@ import jwt
 from jwt.exceptions import InvalidTokenError
 from werkzeug.security import check_password_hash, generate_password_hash
 
-JWT_SECRET = os.environ.get("JWT_SECRET", "dev-change-jwt-secret-in-production")
+def _jwt_secret() -> str:
+    secret = os.environ.get("JWT_SECRET", "").strip()
+    if secret:
+        return secret
+    if os.environ.get("FLASK_DEBUG", "1") == "1":
+        return "dev-only-insecure-jwt-secret-set-JWT_SECRET-in-env"
+    raise RuntimeError(
+        "JWT_SECRET is not set. Copy backend/.env.example to backend/.env and set a long random value."
+    )
+
+
+JWT_SECRET = _jwt_secret()
 JWT_ALG = "HS256"
 JWT_EXP_SECONDS = int(os.environ.get("JWT_EXP_SECONDS", str(7 * 24 * 3600)))
 

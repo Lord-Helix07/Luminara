@@ -1,3 +1,10 @@
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent / ".env")
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from script import read_pdf, read_pptx, read_docx, read_ocr_path
@@ -12,7 +19,7 @@ from auth_service import (
     JWT_EXP_SECONDS,
     get_db
 )
-import tempfile, os, re, requests
+import tempfile, re, requests
 from threading import Thread
 
 app = Flask(__name__)

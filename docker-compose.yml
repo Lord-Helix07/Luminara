@@ -13,12 +13,13 @@ services:
       context: ./backend
     ports:
       - "5050:5050"
+    env_file:
+      - backend/.env
     environment:
       HOST: "0.0.0.0"
       PORT: "5050"
       FLASK_DEBUG: "0"
       LUMINARA_DATA_DIR: "/app/data"
-      JWT_SECRET: "${JWT_SECRET:-dev-change-jwt-secret-in-production}"
       OLLAMA_BASE_URL: "${OLLAMA_BASE_URL:-http://ollama:11434}"
       OLLAMA_MODEL: "${OLLAMA_MODEL:-llama3}"
     volumes:
