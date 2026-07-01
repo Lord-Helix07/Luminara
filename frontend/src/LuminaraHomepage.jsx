@@ -74,6 +74,7 @@ export default function LuminaraHomepage() {
     }
   }, [simplify]);
 
+  // Decides whether form complete enough for user to convert
   const formValid = useMemo(() => {
     if (simplify) {
       if (!manualText.trim()) return false;
@@ -258,6 +259,7 @@ export default function LuminaraHomepage() {
       navigate("/result", {
         state: {
           text: data.text,
+          dictionaryAnnotations: data.dictionary_annotations,
           outputFormat: format,
           downloadBaseName,
         },

@@ -52,11 +52,91 @@ function parseTextForReadAlong(value) {
   return { sentences, paragraphs };
 }
 
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isWholeWord(text, start, end) {
+  const left = text[start - 1];
+  const right = text[end];
+
+  // Either string edges, whitespace, or common punctuation
+  const hasBoundaryChar = (ch) => !ch || /\s|[.,;:!?()"'`\[\]{}<>\-]/.test(ch);
+  return hasBoundaryChar(left) && hasBoundaryChar(right);
+}
+
+function dictionaryWordPattern(word) {
+  return word.trim().split(/\s+/).map(escapeRegExp).join("\\s+");
+}
+
+function normalizeDictionaryAnnotations(annotations) {
+  if (!Array.isArray(annotations)) return [];
+  return annotations
+    .map((annotation) => ({
+      word: typeof annotation?.word === "string" ? annotation.word.trim() : "",
+      explanation:
+        typeof annotation?.explanation === "string" ? annotation.explanation.trim() : "",
+    }))
+    .filter((annotation) => annotation.word && annotation.explanation);
+}
+
+function getSentenceFragmentMatches(sentence, annotations, startAnnotationIndex) {
+  const matches = [];
+  let annotationIndex = startAnnotationIndex;
+  let cursor = 0;
+
+  // Loops until the end of the annotations
+  while (annotationIndex < annotations.length) {
+    const { word, explanation } = annotations[annotationIndex];
+
+    // Find every annotation word in the sentence ignoring case
+    const pattern = new RegExp(dictionaryWordPattern(word), "gi");
+    let found = null;
+
+    // Searches sentence for annotation word
+    for (const match of sentence.slice(cursor).matchAll(pattern)) {
+      const start = cursor + match.index;
+      const end = start + match[0].length;
+
+      // Makes sure the annotation word is a whole word by itself (not part of another)
+      if (!isWholeWord(sentence, start, end)) continue;
+      
+      found = { start, end, text: match[0], explanation };
+      break;
+    }
+
+    if (!found) break;
+
+    matches.push(found);
+    cursor = found.end;
+    annotationIndex += 1;
+  }
+
+  return { matches, nextAnnotationIndex: annotationIndex };
+}
+
+function buildSentenceDictionaryMatches(sentences, annotations) {
+  const dictionaryMatchesBySentence = [];
+  let annotationIndex = 0;
+
+  for (const sentence of sentences) {
+    const { matches, nextAnnotationIndex } = getSentenceFragmentMatches(
+      sentence,
+      annotations,
+      annotationIndex
+    );
+    dictionaryMatchesBySentence.push(matches);
+    annotationIndex = nextAnnotationIndex;
+  }
+
+  return dictionaryMatchesBySentence;
+}
+
 export default function LuminaraResult() {
   const navigate = useNavigate();
   const location = useLocation();
   const { darkMode } = useTheme();
-  const { user, logout } = useAuth();
+  const { user, logout, apiFetch } = useAuth();
   const R = darkMode ? resultPalettes.dark : resultPalettes.light;
 
   const text = location.state?.text || "No text available";
@@ -64,6 +144,10 @@ export default function LuminaraResult() {
   const outputFormat =
     rawFormat === "txt" || rawFormat === "pdf" || rawFormat === "doc" ? rawFormat : "txt";
   const downloadBaseName = location.state?.downloadBaseName || "luminara-output";
+  const dictionaryAnnotations = useMemo(
+    () => normalizeDictionaryAnnotations(location.state?.dictionaryAnnotations),
+    [location.state?.dictionaryAnnotations]
+  );
   const [isPlaying, setIsPlaying] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toast, setToast] = useState("");
@@ -76,12 +160,17 @@ export default function LuminaraResult() {
   const [dictPartOfSpeech, setDictPartOfSpeech] = useState("Noun");
   const [dictDefinition, setDictDefinition] = useState("");
   const [dictSaving, setDictSaving] = useState(false);
+  const [activeDictTooltip, setActiveDictTooltip] = useState(null);
   const settingsRef = useRef(null);
   const resultTextRef = useRef(null);
   const readAlongSessionRef = useRef(0);
   const readAlongText = useMemo(() => parseTextForReadAlong(text), [text]);
   const sentences = readAlongText.sentences;
   const paragraphs = readAlongText.paragraphs;
+  const dictionaryMatchesBySentence = useMemo(
+    () => buildSentenceDictionaryMatches(sentences, dictionaryAnnotations),
+    [sentences, dictionaryAnnotations]
+  );
 
   useEffect(() => {
     if (!settingsOpen) return;
@@ -93,6 +182,16 @@ export default function LuminaraResult() {
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [settingsOpen]);
+
+  useEffect(() => {
+    if (!activeDictTooltip) return;
+    const onDoc = (e) => {
+      if (e.target?.closest?.(".dictionary-highlight")) return;
+      setActiveDictTooltip(null);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [activeDictTooltip]);
 
   useEffect(() => {
     return () => {
@@ -324,6 +423,67 @@ export default function LuminaraResult() {
         @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { margin: 0; }
+
+        .dictionary-highlight {
+          position: relative;
+          display: inline;
+          padding: 0 3px;
+          border-radius: 4px;
+          background: rgba(255, 152, 0, 0.42);
+          color: inherit;
+          cursor: pointer;
+          box-decoration-break: clone;
+          -webkit-box-decoration-break: clone;
+        }
+
+        .dictionary-highlight:hover,
+        .dictionary-highlight.active {
+          background: rgba(255, 152, 0, 0.62);
+        }
+
+        .dictionary-highlight:focus {
+          outline: 2px solid #e65100;
+          outline-offset: 2px;
+        }
+
+        .dictionary-tooltip {
+          position: absolute;
+          left: 50%;
+          bottom: calc(100% + 8px);
+          z-index: 20;
+          width: max-content;
+          max-width: min(260px, 70vw);
+          padding: 8px 10px;
+          border-radius: 8px;
+          background: rgba(28, 28, 28, 0.95);
+          color: #ffffff;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+          font-size: 13px;
+          font-weight: 500;
+          line-height: 1.35;
+          opacity: 0;
+          pointer-events: none;
+          transform: translate(-50%, -4px);
+          transition: opacity 0.15s ease, transform 0.15s ease;
+          white-space: normal;
+        }
+
+        .dictionary-tooltip::after {
+          content: "";
+          position: absolute;
+          left: 50%;
+          top: 100%;
+          transform: translateX(-50%);
+          border: 6px solid transparent;
+          border-top-color: rgba(28, 28, 28, 0.95);
+        }
+
+        .dictionary-highlight:hover .dictionary-tooltip,
+        .dictionary-highlight:focus .dictionary-tooltip,
+        .dictionary-highlight.active .dictionary-tooltip {
+          opacity: 1;
+          transform: translate(-50%, -8px);
+        }
       `}</style>
 
       <div style={{
@@ -530,7 +690,53 @@ export default function LuminaraResult() {
                                 : "transparent",
                           }}
                         >
-                          {sentence}
+                          {(() => {
+                            const matches = dictionaryMatchesBySentence[sentenceIndex] || [];
+                            if (!matches.length) {
+                              return <span>{sentence}</span>;
+                            }
+
+                            const sentenceParts = [];
+                            let cursor = 0;
+                            matches.forEach((match, partIndex) => {
+                              if (match.start > cursor) {
+                                sentenceParts.push(
+                                  <span key={`text-${sentenceIndex}-${partIndex}-before`}>
+                                    {sentence.slice(cursor, match.start)}
+                                  </span>
+                                );
+                              }
+                              const tooltipKey = `dict-${sentenceIndex}-${partIndex}`;
+                              sentenceParts.push(
+                                <span
+                                  key={tooltipKey}
+                                  className={`dictionary-highlight${activeDictTooltip === tooltipKey ? " active" : ""}`}
+                                  tabIndex={0}
+                                  aria-label={`${match.text}: ${match.explanation}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveDictTooltip((prev) =>
+                                      prev === tooltipKey ? null : tooltipKey
+                                    );
+                                  }}
+                                >
+                                  {match.text}
+                                  <span className="dictionary-tooltip" role="tooltip">
+                                    {match.explanation}
+                                  </span>
+                                </span>
+                              );
+                              cursor = match.end;
+                            });
+                            if (cursor < sentence.length) {
+                              sentenceParts.push(
+                                <span key={`text-${sentenceIndex}-last`}>
+                                  {sentence.slice(cursor)}
+                                </span>
+                              );
+                            }
+                            return sentenceParts;
+                          })()}
                         </span>
                         {i < sentenceIndexes.length - 1 ? " " : ""}
                       </span>

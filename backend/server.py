@@ -101,24 +101,156 @@ def split_headings(text):
 
     return "\n\n".join(result)
 
+def normalize_dictionary_entries(entries):
+    seen_words = set()
+    normalized_entries = []
+    for entry in entries:
+
+        word = (entry["word"] or "").strip()
+        definition = (entry["definition"] or "").strip()
+
+        if not word or not definition:
+            continue
+
+        lowercase_word = word.lower()
+
+        if lowercase_word in seen_words:
+            continue
+
+        seen_words.add(lowercase_word)
+        safe_word = re.escape(word)
+        safe_word = re.sub(r"\\\s+", r"\\s+", safe_word)
+
+        normalized_entries.append({
+            "word": word,
+            "definition": definition,
+            "pattern": re.compile(rf"(?<![A-Za-z0-9_])({safe_word})(?![A-Za-z0-9_])", re.IGNORECASE),
+        })
+    return normalized_entries
+
+def build_dictionary_annotations(text, dictionary_entries):
+    pending_annotations = []
+    occupied = []
+
+    # Detects if any dictionary words overlap
+    def overlaps_occupied(start, end):
+        return any(occupied_start < end and occupied_end > start for occupied_start, occupied_end in occupied)
+
+    # Sort each dictionary entry by length of word in descending order
+    for entry in sorted(dictionary_entries, key=lambda item: len(item["word"]), reverse=True):
+       
+        # Finds all matches of the dictionary word in the text except overlaps
+        matches = [
+            match
+            for match in entry["pattern"].finditer(text)
+            if not overlaps_occupied(match.start(), match.end())
+        ]
+        if not matches:
+            continue
+
+        explanations = generate_dictionary_explanations(
+            entry["word"],
+            entry["definition"],
+            len(matches),
+        )
+
+        # Adds the dictionary word and explanation to the pending list
+        for index, match in enumerate(matches):
+            start, end = match.start(), match.end()
+            occupied.append((start, end))
+            explanation = explanations[index] if index < len(explanations) else entry["definition"]
+            pending_annotations.append({
+                "word": match.group(0),
+                "explanation": explanation,
+                "start": start,
+            })
+
+    pending_annotations.sort(key=lambda item: item["start"])
+    return [
+        {"word": item["word"], "explanation": item["explanation"]}
+        for item in pending_annotations
+    ]
+
+def generate_dictionary_explanations(word, definition, count):
+    if count <= 0:
+        return []
+    if count == 1:
+        return [definition]
+
+    prompt = f"""Write {count} different short explanations of this word for a reader with dyslexia.
+
+Rules:
+- Every explanation must mean EXACTLY the same thing as the correct meaning below.
+- Use plain, simple words. Max 12 words per line.
+- Do NOT add jokes, slang, opinions, or facts that are not in the correct meaning.
+- Do NOT change, stretch, or guess the meaning.
+- Do NOT use the word "{word}" in any explanation.
+- Each line must use different wording, but keep the same accurate meaning.
+- Output exactly {count} numbered lines and nothing else.
+
+Word: {word}
+Correct meaning: {definition}
+
+Your answer ({count} numbered lines only):"""
+
+    explanations = []
+    try:
+        raw = _ollama_generate(
+            prompt,
+            num_predict=min(512, max(128, 32 * count)),
+            temperature=0.2,
+        )
+        parsed = _parse_numbered_rewrites(raw, count) or []
+        seen = set()
+        for explanation in parsed:
+            explanation = re.sub(r"\s+", " ", explanation).strip().strip("\"'[]").rstrip(".")
+            if not explanation:
+                continue
+            lowercase_explanation = explanation.lower()
+            if lowercase_explanation in seen:
+                continue
+            seen.add(lowercase_explanation)
+            explanations.append(explanation)
+    except Exception as e:
+        print(f"Dictionary explanation error: {e}")
+
+    while len(explanations) < count:
+        explanations.append(definition)
+    return explanations[:count]
+
+
+def dictionary_prompt_hint(dictionary_entries):
+    if not dictionary_entries:
+        return ""
+    quoted = ", ".join(f'"{entry["word"]}"' for entry in dictionary_entries)
+    return f"Keep these dictionary words unchanged if they appear: {quoted}."
+
+def preserve_dictionary_terms(original, rewritten, dictionary_entries):
+
+    # Condition needs to be true for all dictionary entries
+    return all(
+        not entry["pattern"].search(original) or entry["pattern"].search(rewritten)
+        for entry in dictionary_entries
+    )
+
 def process_plain_text(text, user=None):
     if text is None:
         text = ""
     if not isinstance(text, str):
         text = str(text)
 
-    dictionary_words = []
+    dictionary_entries = []
 
     # Only gets dictionary words if user logged in
     if user:
         conn = get_db()
-        rows = conn.execute(
+        entries = conn.execute(
             "SELECT id, word, part_of_speech, definition FROM dictionary WHERE user_id = ? ORDER BY id DESC",
             (user["id"],)  # Comma required
-        ).fetchall() 
+        ).fetchall()
         conn.close()
 
-        dictionary_words = [row["word"] for row in rows]
+        dictionary_entries = normalize_dictionary_entries(entries)
 
     # Preserve paragraph boundaries while flattening hard-wrapped lines.
     paragraphs = re.split(r"\n\s*\n", text)
@@ -132,8 +264,8 @@ def process_plain_text(text, user=None):
         lines = [" ".join(line.split()) for line in paragraph.splitlines() if line.strip()]
         cleaned = " ".join(lines).strip()
         normalized_paragraphs.append(cleaned)
-        
-    normalized_text = "\n\n".join(normalized_paragraphs)  
+
+    normalized_text = "\n\n".join(normalized_paragraphs)
 
     split_text = split_headings(normalized_text)
 
@@ -154,7 +286,7 @@ def process_plain_text(text, user=None):
     batch_size = OLLAMA_REWRITE_BATCH_SIZE
     for i in range(0, len(to_rewrite), batch_size):
         batch = to_rewrite[i : i + batch_size]
-        rewritten_list = rewrite_sentences_batch(batch, dictionary_words)
+        rewritten_list = rewrite_sentences_batch(batch, dictionary_entries)
         for sentence, rewritten in zip(batch, rewritten_list):
             if rewritten and rewritten != sentence:
                 improved_text = improved_text.replace(sentence, rewritten, 1)
@@ -167,9 +299,11 @@ def process_plain_text(text, user=None):
     improved_text = re.sub(r"\s+([,;:!?])", r"\1", improved_text) # remove spaces before punctuation
     improved_text = re.sub(r"[ \t]{2,}", " ", improved_text)
     improved_text = re.sub(r"\n{3,}", "\n\n", improved_text).strip()
+    dictionary_annotations = build_dictionary_annotations(improved_text, dictionary_entries)
 
     return {
         "text": improved_text,
+        "dictionary_annotations": dictionary_annotations,
         "original_text": text,
         "flags": flags,
         "flagged_count": len(triggered_sentences),
@@ -213,19 +347,15 @@ def _parse_numbered_rewrites(response_text, n):
     return None
 
 
-# asks ollama to rewrite sentences in simple English (batched to reduce latency on long docs)
-def rewrite_sentences_batch(sentences, dictionary_words=None):
+def rewrite_sentences_batch(sentences, dictionary_entries=None):
 
     if not sentences:
         return []
     
     if len(sentences) == 1:
-        return [rewrite_sentence(sentences[0], dictionary_words)]
+        return [rewrite_sentence(sentences[0], dictionary_entries)]
     
-    dictionary_hint = ""
-    if dictionary_words:
-
-        dictionary_hint = f"If the sentences contain any of these words: {', '.join(dictionary_words)}, replace each one with a random simpler synonym."
+    dictionary_hint = dictionary_prompt_hint(dictionary_entries or [])
 
     n = len(sentences)
     block = "\n".join(f"{i + 1}. {s}" for i, s in enumerate(sentences))
@@ -245,20 +375,20 @@ Your answer ({n} numbered lines only):"""
         raw = _ollama_generate(prompt, num_predict=num_predict, temperature=0.25)
         parsed = _parse_numbered_rewrites(raw, n)
         if parsed is not None:
-            return parsed
+            return [
+                rewritten if preserve_dictionary_terms(original, rewritten, dictionary_entries or []) else original
+                for original, rewritten in zip(sentences, parsed)
+            ]
         print("Ollama batch parse failed; falling back to one-by-one for this batch.")
     except Exception as e:
         print(f"Ollama batch error: {e}")
 
-    return [rewrite_sentence(s, dictionary_words) for s in sentences]
+    return [rewrite_sentence(s, dictionary_entries) for s in sentences]
 
 
 # asks ollama to rewrite a single sentence in simple English
-def rewrite_sentence(sentence, dictionary_words=None):  # dictionary_words defaults to None if not passed
-    dictionary_hint = ""
-    if dictionary_words:
-
-        dictionary_hint = f"If the sentence contains any of these words: {', '.join(dictionary_words)}, replace each one with a random simpler synonym."
+def rewrite_sentence(sentence, dictionary_entries=None):
+    dictionary_hint = dictionary_prompt_hint(dictionary_entries or [])
 
     prompt = f"""Rewrite this sentence in simple English. Use short words. Keep the same meaning. Do not add anything extra. Do not rewrite lists or bullet points. Return only the rewritten sentence. {dictionary_hint}
 
@@ -267,6 +397,8 @@ Simple version:"""
     
     try:
         out = _ollama_generate(prompt, num_predict=256, temperature=0.3)
+        if not preserve_dictionary_terms(sentence, out, dictionary_entries or []):
+            return sentence
         return out
     except Exception as e:
         print(f"Ollama error: {e}")
@@ -434,15 +566,15 @@ def get_dictionary():
             """,
             (user["id"],),
         )
-        rows = cur.fetchall()
+        entries = cur.fetchall()
         items = [
             {
-                "id": row["id"],
-                "word": row["word"],
-                "partOfSpeech": row["part_of_speech"] or "",
-                "definition": row["definition"] or "",
+                "id": entry["id"],
+                "word": entry["word"],
+                "partOfSpeech": entry["part_of_speech"] or "",
+                "definition": entry["definition"] or "",
             }
-            for row in rows
+            for entry in entries
         ]
         return jsonify({"entries": items})
     finally:
@@ -521,10 +653,6 @@ def delete_dictionary_word(entry_id):
     user = _auth_user_from_request()
     if not user:
         return jsonify({"error": "Unauthorized"}), 401
-    data = request.get_json(silent=True) or {}
-    entry_id = data.get("id")
-    if entry_id is None:
-        return jsonify({"error": "Dictionary entry id is required"}), 400
 
     conn = get_db()
     try:

@@ -133,9 +133,8 @@ export default function Dictionary() {
   const handleDeleteWord = async (entryId) => {
     setError("");
     try {
-      const res = await apiFetch("/api/dictionary", {
+      const res = await apiFetch(`/api/dictionary/${entryId}`, {
         method: "DELETE",
-        body: JSON.stringify({ id: entryId }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {

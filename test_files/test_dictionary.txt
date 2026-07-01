@@ -1,0 +1,40 @@
+DICTIONARY TEST DOCUMENT
+========================
+
+PURPOSE: Upload this file to Luminara and convert it. Dictionary words should be replaced with simpler synonyms.
+
+INSTRUCTIONS:
+1. Add these words to your dictionary BEFORE converting:
+   - heterogeneous → "different types"
+   - pathophysiological → "how disease works in the body"
+   - translational → "practical or applied"
+   - etiological → "related to causes"
+   - biomarkers → "measurable signs in the body"
+   - dysregulation → "things not working correctly"
+
+2. Upload this file and click "Convert"
+
+3. Look for these words in the output - they should be SIMPLIFIED or REPLACED
+
+---
+
+ORIGINAL TEST PARAGRAPHS:
+
+The heterogeneous nature of treatment-refractory depression reflects underlying pathophysiological mechanisms that remain incompletely characterized. Translational research has identified several etiological factors including neuroinflammatory cascades and glutamatergic dysregulation as potential contributors to illness persistence.
+
+Contemporary investigations of biomarkers in depression have yielded promising results, yet the heterogeneous presentation across patient populations complicates diagnostic precision. Understanding the pathophysiological basis of treatment resistance requires recognition that dysregulation of multiple biological systems may underlie apparently similar clinical presentations.
+
+The translational evidence supporting novel interventions depends critically on identification of relevant etiological subtypes. Biomarkers capable of detecting heterogeneous disease mechanisms offer the possibility of individualized treatment strategies that address underlying pathophysiological abnormalities rather than simply treating symptoms.
+
+---
+
+IF DICTIONARY IS WORKING:
+- "heterogeneous" should become "different types" or similar
+- "pathophysiological" should become "how disease works in the body" or simpler
+- "translational" should become "practical" or "applied"
+- "etiological" should become "related to causes" or simpler
+- "biomarkers" should become "measurable signs"
+- "dysregulation" should become "things not working correctly" or simpler
+
+IF DICTIONARY IS NOT WORKING:
+- These words will remain unchanged or be simplified by the LLM's general rules (which may or may not use your definitions)
